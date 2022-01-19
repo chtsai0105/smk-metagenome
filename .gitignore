@@ -1,0 +1,6 @@
+*.ipynb
+slurm_logs
+.vscode
+.snakemake
+data
+metagenome-snakemake.code-workspace
