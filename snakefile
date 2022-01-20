@@ -57,11 +57,11 @@ rule fastqc_pre:
         lambda wildcards: os.path.join(FASTQ_RENAMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
     output:
         expand("{dir}/pre_trim/{{sample}}_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"])
-    threads: 2
-    conda:
-        "envs/preprocess.yaml"
     params:
         dirname = "{dir}/pre_trim".format(dir=FASTQC_OUTPUT)
+    threads: 4
+    conda:
+        "envs/preprocess.yaml"
     shell:
         """
         fastqc -t {threads} -o {params.dirname} {input}
@@ -101,7 +101,7 @@ rule metaspades:
         assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
     threads: 12
     resources:
-        mem_mb=240
+        mem_mb=240000
     conda:
         "envs/assembler.yaml"
     shell:
@@ -116,11 +116,11 @@ rule bowtie2_mapping:
     output:
         bam = temp("{dir}/{{sample}}/mapped.bam".format(dir=MAPPING_OUTPUT)),
         bai = temp("{dir}/{{sample}}/mapped.bam.bai".format(dir=MAPPING_OUTPUT))
+    params:
+        idx = "{dir}/{{sample}}/idx".format(dir=MAPPING_OUTPUT)
     threads: 4
     envmodules:
         "autometa/1.0.2"
-    params:
-        idx = "{dir}/{{sample}}/idx".format(dir=MAPPING_OUTPUT)
     shell:
         """
         bowtie2-build {input.assembly} {params.idx}
@@ -137,6 +137,10 @@ rule generate_coverage_table:
         cov_bed = temp("{dir}/{{sample}}/genome_cov.bed".format(dir=MAPPING_OUTPUT)),
         cov_tab = "{dir}/{{sample}}/coverage.tab".format(dir=MAPPING_OUTPUT)
     threads: 4
+    resources:
+        mem_mb=240000
+    envmodules:
+        "autometa/1.0.2"
     shell:
         """
         genomeCoverageBed -ibam {input.bam} > {output.cov_bed}
@@ -152,6 +156,11 @@ rule autometa_split_to_kingdom_bins:
         fasta = expand("{dir}/{{sample}}/{kingdom}.fasta", dir=BINNING_OUTPUT, kingdom=["Bacteria", "Archaea"]),
         taxon_tab = "{dir}/{{sample}}/taxonomy.tab".format(dir=BINNING_OUTPUT)
     threads: 4
+    resources:
+        mem_mb=240000,
+        time=20160
+    envmodules:
+        "autometa/1.0.2"
     shell:
         """
         make_taxonomy_table.py \
@@ -174,6 +183,12 @@ rule autometa_binning_by_kingdom:
         kingdom = lambda wildcards: wildcards.kingdom.lower()
     wildcard_constraints:
         kingdom = "Bacteria|Archaea"
+    threads: 4
+    resources:
+        mem_mb=240000,
+        time=43200
+    envmodules:
+        "autometa/1.0.2"
     shell:
         """
         run_autometa.py \
@@ -195,6 +210,8 @@ rule autometa_cluster_analysis:
         directory("{dir}/{{sample}}/{{kingdom}}_run/cluster_process_output".format(dir=BINNING_OUTPUT))
     params:
         databases = AUTOMETA_DATABASES
+    envmodules:
+        "autometa/1.0.2"
     shell:
         """
         cluster_process.py \

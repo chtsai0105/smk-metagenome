@@ -1,3 +1,3 @@
 #!/bin/bash
 
-snakemake -p --profile slurm --use-conda
+snakemake -p --profile slurm --use-envmodules --use-conda --jobs 8

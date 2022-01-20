@@ -34,13 +34,13 @@ Clone the repo to your computer.
 Clone by the following command if you're using public key for github connection.
 
 ```
-git clone git@github.com:chtsai0105/metagenome-snakemake.git
+git clone --recurse-submodules git@github.com:chtsai0105/metagenome-snakemake.git
 ```
 
 Otherwise, clone by https link.
 
 ```
-git clone https://github.com/chtsai0105/metagenome-snakemake.git
+git clone --recurse-submodules https://github.com/chtsai0105/metagenome-snakemake.git
 ```
 
 Next, go to the directory by `cd metagenome-snakemake`. It should contains the following files:
@@ -50,8 +50,9 @@ File                    |Description
 `snakefile`             |Define the rules for the workflow.
 `config.yaml`           |Define the path for data and metadata.
 `sample.csv`            |The metadata for samples. Define the names of the samples and the fastq files.
-`data`                  |The folder for the data and the workflow outputs.
-`run_snakemake.bash`    |Execute the workflow
+`run_snakemake.bash`    |The bash script for running the workflow
+`data/`                 |The folder for the data and the workflow outputs.
+`slurm/`                |The folder that contains the slurm profile for stajichlab partition@UCR hpcc
 
 ## Define the path
 
@@ -61,11 +62,21 @@ You can edit the `config.yaml` to setup the path for data and metadata of the sa
 
 You should properly defined your metadata, which is record in the `sample.csv`, before running the workflow. There are 2 columns in this csv table - **sample** and **fastq**. The column **sample** defined the sample name. You can change it to names which are more distinguishable instead of a accession number. The column **fastq** defined the fastq file names. Please make sure they are identical to the fastq files you have otherwise the workflow may have trouble to input the files. Please also confirm that the names in each column are unique.
 
+## Setup the slurm profile (Optional)
+
+If you want to run the workflow on the cluster, you have to setup the profile first. Since the `slurm` profile have been cloned as a submodule, you can simply symlink the **slurm** folder to your snakemake config folder by:
+
+```
+ln -s `realpath slurm` $HOME/.config/snakemake
+```
+
+Please refer to [snakemake profile for slurm](https://github.com/chtsai0105/snakemake_profile-slurm) for additional info.
+
 ## Run the workflow
 
 After compiling the template and setup the paramters, the next step is to run the workflow.
 
-Snakemake provide a dry-run feature to examine the workflow before truly running it. You should always use the following command to test the workflow beforehand:
+Snakemake provide a dry-run feature to examine the workflow before truly running it. You should always test the workflow beforehand to make sure it execute as expected by the following command:
 
 ```
 snakemake -np
@@ -74,5 +85,5 @@ snakemake -np
 After confirming all the steps. You can run the workflow by executing the script `run_snakemake.bash` or the following command:
 
 ```
-snakemake -p --profile slurm --use-conda
+snakemake -p --profile slurm --use-envmodules --use-conda --jobs 8
 ```
