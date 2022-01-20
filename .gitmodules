@@ -1,0 +1,3 @@
+[submodule "slurm"]
+	path = slurm
+	url = git@github.com:chtsai0105/snakemake_profile-slurm.git
