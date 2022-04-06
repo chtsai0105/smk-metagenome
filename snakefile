@@ -52,14 +52,22 @@ rule all:
         # fastqc_post_trim =  expand("{dir}/post_trim/{sample}_fastqc.{ext}", dir=FASTQC_OUTPUT, sample=sample_df['sample'], ext=["html", "zip"]),
         assembly =          expand("{dir}/{sample}/scaffolds.fasta", dir=ASSEMBLY_OUTPUT, sample=sample_df['sample']),
         mapping_output =    expand("{dir}/{sample}.{ext}", dir=MAPPING_OUTPUT, sample=sample_df['sample'], ext=["bam", "bam.bai"]),
+        ### euk_detection.smk 
         # euk_bin =           expand("{dir}/{sample}/euk_bin", dir=EUK_BINNING_OUTPUT, sample=sample_df['sample']),
+        #####
+        ### autometa.smk
         filtered_fasta =    expand("{dir}/{sample}/intermediates/filtered.fasta", dir=BINNING_OUTPUT, sample=sample_df['sample']),
         # cov_tab =           expand("{dir}/{sample}/coverage.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample']),
         # autometa_markers =  expand("{dir}/{sample}/{kingdom}.markers.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=["bacteria", "archaea"]),
-        # blastp =            expand("{dir}/{sample}/blastp.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'])
+        # blastp =            expand("{dir}/{sample}/blastp.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample']),
         # kingdom_fasta =     expand("{dir}/{sample}/{kingdom}.fasta", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=["bacteria", "archaea"]),
-        taxonomy =          expand("{dir}/{sample}/intermediates/taxonomy", dir=BINNING_OUTPUT, sample=sample_df['sample'])
-        # cluster_output =    expand("{dir}/{sample}/{kingdom}_run/cluster_process_output", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['Bacteria', 'Archaea'])
+        # taxonomy =          expand("{dir}/{sample}/intermediates/taxonomy", dir=BINNING_OUTPUT, sample=sample_df['sample']),
+        binning_output =    expand("{dir}/{sample}/{kingdom}_binning.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        main_output =       expand("{dir}/{sample}/{kingdom}_main.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        recruit_binning =   expand("{dir}/{sample}/{kingdom}_recruitment_binning.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        recruit_features =  expand("{dir}/{sample}/{kingdom}_recruitment_features.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        recruit_main =      expand("{dir}/{sample}/{kingdom}_recruitment_main.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea'])
+        ###
 
 rule rename_input:
     input:

@@ -135,7 +135,7 @@ rule diamond_blastp:
         db = rules.diamond.output
     output:
         "{dir}/blastp.tsv".format(dir=BINNING_INTERMEDIATES)
-    threads: 4
+    threads: 20
     conda:
         "envs/autometa.yaml"
     shell:
@@ -158,6 +158,9 @@ rule autometa_taxonomy_lca:
         "{dir}/lca.tsv".format(dir=BINNING_INTERMEDIATES)
     conda:
         "envs/autometa.yaml"
+    resources:
+        time="7-00:00:00",
+        # mem_mb=200000
     shell:
         """
         autometa-taxonomy-lca \
@@ -174,6 +177,9 @@ rule taxonomy_majority_vote:
         "{dir}/votes.tsv".format(dir=BINNING_INTERMEDIATES)
     conda:
         "envs/autometa.yaml"
+    resources:
+        time="7-00:00:00",
+        # mem_mb=200000
     shell:
         """
         autometa-taxonomy-majority-vote \
@@ -188,15 +194,118 @@ rule autometa_taxonomy:
         votes = rules.taxonomy_majority_vote.output,
         dbdir = rules.update_ncbi_database.params.dbdir
     output:
-        directory("{dir}/taxonomy".format(dir=BINNING_INTERMEDIATES))
+        taxonomy = "{dir}/taxonomy/taxonomy.tsv".format(dir=BINNING_INTERMEDIATES),
+        fasta = expand("{dir}/taxonomy/{kingdom}.fna", dir=BINNING_INTERMEDIATES, kingdom=["archaea", "bacteria", "unclassified", "viruses"])
+    params:
+        dirname = directory("{dir}/taxonomy".format(dir=BINNING_INTERMEDIATES))
+    resources:
+        time="14-00:00:00",
+        # mem_mb=200000
     conda:
         "envs/autometa.yaml"
     shell:
         """
         autometa-taxonomy \
             --votes {input.votes} \
-            --output {output} \
+            --output {params.dirname} \
             --assembly {input.assembly} \
             --ncbi {input.dbdir} \
             --split-rank-and-write superkingdom
+        """
+
+rule autometa_kmers:
+    input:
+        fasta = "{dir}/taxonomy/{{kingdom}}.fna".format(dir=BINNING_INTERMEDIATES)
+    output:
+        kmers = "{dir}/{{kingdom}}_kmers.tsv".format(dir=BINNING_INTERMEDIATES),
+        kmers_norm = "{dir}/{{kingdom}}_kmers_normalized.tsv".format(dir=BINNING_INTERMEDIATES),
+        kmers_embed = "{dir}/{{kingdom}}_kmers_embedded.tsv".format(dir=BINNING_INTERMEDIATES)
+    wildcard_constraints:
+        kingdom = "bacteria|archaea"
+    threads: 20
+    resources:
+        time="7-00:00:00",
+        # mem_mb=100000
+    conda:
+        "envs/autometa.yaml"
+    shell:
+        """
+        autometa-kmers \
+            --fasta {input.fasta} \
+            --kmers {output.kmers} \
+            --size 5 \
+            --norm-method am_clr \
+            --norm-output {output.kmers_norm} \
+            --pca-dimensions 50 \
+            --embedding-method bhsne \
+            --embedding-output {output.kmers_embed} \
+            --cpus {threads}
+        """
+
+rule autometa_binning:
+    input:
+        kmers = rules.autometa_kmers.output.kmers_embed,
+        cov = rules.autometa_coverage.output,
+        gc_content = rules.autometa_length_filter.output.gc_content,
+        markers = rules.autometa_markers.output.markers,
+        taxonomy = rules.autometa_taxonomy.output.taxonomy
+    output:
+        binning = "{dir}/{{sample}}/{{kingdom}}_binning.tsv".format(dir=BINNING_OUTPUT),
+        main = "{dir}/{{sample}}/{{kingdom}}_main.tsv".format(dir=BINNING_OUTPUT)
+    wildcard_constraints:
+        kingdom = "bacteria|archaea"
+    threads: 10
+    resources:
+        time="7-00:00:00",
+        # mem_mb=100000
+    conda:
+        "envs/autometa.yaml"
+    shell:
+        """
+        autometa-binning \
+            --kmers {input.kmers} \
+            --coverages {input.cov} \
+            --gc-content {input.gc_content} \
+            --markers {input.markers} \
+            --clustering-method dbscan \
+            --completeness 20 \
+            --purity 90 \
+            --cov-stddev-limit 25 \
+            --gc-stddev-limit 5 \
+            --taxonomy {input.taxonomy} \
+            --output-binning {output.binning} \
+            --output-main {output.main} \
+            --starting-rank superkingdom \
+            --rank-filter superkingdom \
+            --rank-name-filter {wildcards.kingdom} \
+            --cpus {threads}
+        """
+
+rule autometa_unclustered_recruitment:
+    input:
+        kmers = rules.autometa_kmers.output.kmers_norm,
+        cov = rules.autometa_coverage.output,
+        binning = rules.autometa_binning.output.binning,
+        markers = rules.autometa_markers.output.markers,
+        taxonomy = rules.autometa_taxonomy.output.taxonomy
+    output:
+        binning = "{dir}/{{sample}}/{{kingdom}}_recruitment_binning.tsv".format(dir=BINNING_OUTPUT),
+        features = "{dir}/{{sample}}/{{kingdom}}_recruitment_features.tsv".format(dir=BINNING_OUTPUT),
+        main = "{dir}/{{sample}}/{{kingdom}}_recruitment_main.tsv".format(dir=BINNING_OUTPUT)
+    wildcard_constraints:
+        kingdom = "bacteria|archaea"
+    conda:
+        "envs/autometa.yaml"
+    shell:
+        """
+        autometa-unclustered-recruitment \
+            --kmers {input.kmers} \
+            --coverage {input.cov} \
+            --binning {input.binning} \
+            --markers {input.markers} \
+            --taxonomy {input.taxonomy} \
+            --output-binning {output.binning} \
+            --output-features {output.features} \
+            --output-main {output.main} \
+            --classifier decision_tree
         """
