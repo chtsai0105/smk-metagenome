@@ -1,5 +1,5 @@
 sample,fastq
-B1_Day_1,10740.6.176469.AGTTCC.anqdpht.fastq.gz
-C2_Day_2,10740.6.176469.ATGTCA.anqdpht.fastq.gz
-F16_Day_16,10740.6.176469.CCGTCC.anqdpht.fastq.gz
-E36_Day_36,10740.6.176469.GTAGAG.anqdpht.fastq.gz
+sim_1,sim_1.fastq.gz
+sim_2,sim_2.fastq.gz
+sim_3,sim_3.fastq.gz
+sim_4,sim_4.fastq.gz

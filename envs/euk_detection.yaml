@@ -1,0 +1,6 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - eukrep>=0.6.7
+  - metabat2>=2.15
