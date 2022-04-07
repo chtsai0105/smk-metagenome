@@ -50,9 +50,11 @@ File                    |Description
 `snakefile`             |Define the rules for the workflow.
 `config.yaml`           |Define the path for data and metadata.
 `sample.csv`            |The metadata for samples. Define the names of the samples and the fastq files.
-`run_snakemake.bash`    |The bash script for running the workflow
+`run_snakemake.bash`    |The bash script for running the workflow.
 `data/`                 |The folder for the data and the workflow outputs.
-`slurm/`                |The folder that contains the slurm profile for stajichlab partition@UCR hpcc
+`envs/`                 |The folder that contains the yaml config for conda environments.
+`includes/`             |The folder that contains the submodules for the main workflow.
+`slurm/`                |The folder that contains the slurm profile for stajichlab partition@UCR hpcc.
 
 ## Define the path
 
@@ -60,7 +62,7 @@ You can edit the `config.yaml` to setup the path for data and metadata of the sa
 
 ## Define the samples
 
-You should properly defined your metadata, which is record in the `sample.csv`, before running the workflow. There are 2 columns in this csv table - **sample** and **fastq**. The column **sample** defined the sample name. You can change it to names which are more distinguishable instead of a accession number. The column **fastq** defined the fastq file names. Please make sure they are identical to the fastq files you have otherwise the workflow may have trouble to input the files. Please also confirm that the names in each column are unique.
+You should properly defined your metadata, which is recorded in the `sample.csv`, before running the workflow. There are 2 columns in this csv table - **sample** and **fastq**. The column **sample** defined the sample name. You can change it to names which are more distinguishable instead of accession numbers. The column **fastq** defined the fastq file names you placed in the folder `data/fastq`. Please make sure they are identical to the fastq files you have otherwise the workflow may have trouble to input the files. Please also confirm that the names in each column are unique.
 
 ## Setup the slurm profile (Optional)
 
@@ -85,5 +87,7 @@ snakemake -np
 After confirming all the steps. You can run the workflow by executing the script `run_snakemake.bash` or the following command:
 
 ```
-snakemake -p --profile slurm --use-envmodules --use-conda --jobs 8
+snakemake -p --profile slurm --use-envmodules --use-conda --jobs 8 --max-threads 20
 ```
+
+Currently I constrain the cpu usage of all parallel jobs to 20, you may change it as you like.
