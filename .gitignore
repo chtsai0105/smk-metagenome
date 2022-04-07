@@ -11,3 +11,5 @@
 !data/.gitkeep
 !envs
 !envs/*
+!includes
+!includes/*

@@ -1,0 +1,5 @@
+channels:
+  - bioconda
+dependencies:
+  - autometa>=2.0.2
+  - prodigal=2.6.3
