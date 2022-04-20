@@ -61,12 +61,15 @@ rule all:
         # autometa_markers =  expand("{dir}/{sample}/{kingdom}.markers.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=["bacteria", "archaea"]),
         # blastp =            expand("{dir}/{sample}/blastp.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample']),
         # kingdom_fasta =     expand("{dir}/{sample}/{kingdom}.fasta", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=["bacteria", "archaea"]),
-        # taxonomy =          expand("{dir}/{sample}/intermediates/taxonomy", dir=BINNING_OUTPUT, sample=sample_df['sample']),
-        binning_output =    expand("{dir}/{sample}/{kingdom}_binning.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        main_output =       expand("{dir}/{sample}/{kingdom}_main.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        recruit_binning =   expand("{dir}/{sample}/{kingdom}_recruitment_binning.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        recruit_features =  expand("{dir}/{sample}/{kingdom}_recruitment_features.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        recruit_main =      expand("{dir}/{sample}/{kingdom}_recruitment_main.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea'])
+        taxonomy =          expand("{dir}/{sample}/intermediates/taxonomy/taxonomy.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample']),
+        # binning_output =    expand("{dir}/{sample}/{kingdom}_binning.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        # main_output =       expand("{dir}/{sample}/{kingdom}_main.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        # recruit_binning =   expand("{dir}/{sample}/{kingdom}_recruitment_binning.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        # recruit_features =  expand("{dir}/{sample}/{kingdom}_recruitment_features.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        # recruit_main =      expand("{dir}/{sample}/{kingdom}_recruitment_main.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        metabin_stats = expand("{dir}/{sample}/{kingdom}_metabin_stats.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        metabin_taxonomy = expand("{dir}/{sample}/{kingdom}_metabin_taxonomy.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
+        metabins = expand("{dir}/{sample}/{kingdom}_metabins", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea'])
         ###
 
 rule rename_input:
@@ -128,14 +131,16 @@ rule metaspades:
     params:
         dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
     threads: 12
-    # resources:
-    #     mem_mb=240000
+    resources:
+        time=config['time']['LV2'],
+        mem_mb=config['mem']['LV3']
     conda:
         "envs/assembler.yaml"
     shell:
         """
         spades.py --meta -o {params.dirname} --12 {input} -t {threads}
         """
+
 
 rule bowtie2_mapping:
     input:
@@ -148,6 +153,9 @@ rule bowtie2_mapping:
     params:
         idx = "{dir}/{{sample}}".format(dir=MAPPING_OUTPUT)
     threads: 4
+    resources:
+        time=config['time']['LV1'],
+        mem_mb=config['mem']['LV2']
     conda:
         "envs/autometa.yaml"
     shell:

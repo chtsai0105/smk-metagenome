@@ -1,3 +1,11 @@
 Metadata: sample.csv
 Data: data
 Autometa_databases: /rhome/ctsai085/bigdata/autometa/databases
+mem:
+  LV1: 20000
+  LV2: 20000
+  LV3: 20000
+time:
+  LV1: "1-00:00:00"
+  LV2: "7-00:00:00"
+  LV3: "14-00:00:00"

@@ -44,9 +44,9 @@ rule autometa_orf:
         nucls = "{dir}/predict_orfs.fna".format(dir=BINNING_INTERMEDIATES),
         prots = "{dir}/predict_orfs.faa".format(dir=BINNING_INTERMEDIATES)
     threads: 4
-    # resources:
-    #     mem_mb=240000,
-    #     time=20160
+    resources:
+        time=config['time']['LV2'],
+        mem_mb=config['mem']['LV2']
     conda:
         "envs/autometa.yaml"
     shell:
@@ -109,6 +109,9 @@ use rule update_marker_database as update_ncbi_database with:
     params:
         dbdir = directory("{dir}/ncbi".format(dir=DATABASES_DIR)),
         option = "ncbi"
+    resources:
+        time=config['time']['LV2'],
+        mem_mb=config['mem']['LV2']
 
 
 rule diamond:
@@ -119,6 +122,9 @@ rule diamond:
     params:
         output = "{}/nr".format(rules.update_ncbi_database.params.dbdir)
     threads: 20
+    resources:
+        time=config['time']['LV2'],
+        mem_mb=config['mem']['LV2']
     conda:
         "envs/autometa.yaml"
     shell:
@@ -134,7 +140,7 @@ rule diamond_blastp:
         prots_orf = rules.autometa_orf.output.prots,
         db = rules.diamond.output
     output:
-        "{dir}/blastp.tsv".format(dir=BINNING_INTERMEDIATES)
+        "{dir}/blastp.tsv".format(dir=BINNING_INTERMEDIATES)                # Very time consuming
     threads: 20
     conda:
         "envs/autometa.yaml"
@@ -159,8 +165,8 @@ rule autometa_taxonomy_lca:
     conda:
         "envs/autometa.yaml"
     resources:
-        time="7-00:00:00",
-        # mem_mb=200000
+        time=config['time']['LV2'],
+        mem_mb=config['mem']['LV2']
     shell:
         """
         autometa-taxonomy-lca \
@@ -178,8 +184,8 @@ rule taxonomy_majority_vote:
     conda:
         "envs/autometa.yaml"
     resources:
-        time="7-00:00:00",
-        # mem_mb=200000
+        time=config['time']['LV2'],
+        mem_mb=config['mem']['LV2']
     shell:
         """
         autometa-taxonomy-majority-vote \
@@ -194,13 +200,12 @@ rule autometa_taxonomy:
         votes = rules.taxonomy_majority_vote.output,
         dbdir = rules.update_ncbi_database.params.dbdir
     output:
-        taxonomy = "{dir}/taxonomy/taxonomy.tsv".format(dir=BINNING_INTERMEDIATES),
-        fasta = expand("{dir}/taxonomy/{kingdom}.fna", dir=BINNING_INTERMEDIATES, kingdom=["archaea", "bacteria", "unclassified", "viruses"])
+        taxonomy = "{dir}/taxonomy/taxonomy.tsv".format(dir=BINNING_INTERMEDIATES)
     params:
         dirname = directory("{dir}/taxonomy".format(dir=BINNING_INTERMEDIATES))
     resources:
-        time="14-00:00:00",
-        # mem_mb=200000
+        time=config['time']['LV3'],
+        mem_mb=config['mem']['LV2']
     conda:
         "envs/autometa.yaml"
     shell:
@@ -224,8 +229,8 @@ rule autometa_kmers:
         kingdom = "bacteria|archaea"
     threads: 20
     resources:
-        time="7-00:00:00",
-        # mem_mb=100000
+        time=config['time']['LV2'],
+        mem_mb=config['mem']['LV2']
     conda:
         "envs/autometa.yaml"
     shell:
@@ -256,8 +261,8 @@ rule autometa_binning:
         kingdom = "bacteria|archaea"
     threads: 10
     resources:
-        time="7-00:00:00",
-        # mem_mb=100000
+        time=config['time']['LV2'],
+        mem_mb=config['mem']['LV2']
     conda:
         "envs/autometa.yaml"
     shell:
@@ -308,4 +313,30 @@ rule autometa_unclustered_recruitment:
             --output-features {output.features} \
             --output-main {output.main} \
             --classifier decision_tree
+        """
+
+rule autometa_binning_summary:
+    input:
+        main = rules.autometa_binning.output.main,
+        markers = rules.autometa_markers.output.markers,
+        assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT),
+        dbdir = rules.update_ncbi_database.params.dbdir
+    output:
+        stats = "{dir}/{{sample}}/{{kingdom}}_metabin_stats.tsv".format(dir=BINNING_OUTPUT),
+        taxonomy = "{dir}/{{sample}}/{{kingdom}}_metabin_taxonomy.tsv".format(dir=BINNING_OUTPUT),
+        metabins = directory("{dir}/{{sample}}/{{kingdom}}_metabins".format(dir=BINNING_OUTPUT))
+    wildcard_constraints:
+        kingdom = "bacteria|archaea"
+    conda:
+        "envs/autometa.yaml"
+    shell:
+        """
+        autometa-binning-summary \
+            --binning-main {input.main} \
+            --markers {input.markers} \
+            --metagenome {input.assembly} \
+            --ncbi {input.dbdir} \
+            --output-stats {output.stats} \
+            --output-taxonomy {output.taxonomy} \
+            --output-metabins {output.metabins}
         """
