@@ -1,3 +1,3 @@
 #!/bin/bash
 
-snakemake -p --profile slurm --use-envmodules --use-conda --jobs 8 --max-threads 20
+snakemake -p --profile slurm --use-conda --jobs 6 --max-threads 20

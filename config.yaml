@@ -1,11 +1,23 @@
 Metadata: sample.csv
-Data: data
-Autometa_databases: /rhome/ctsai085/bigdata/autometa/databases
-mem:
-  LV1: 20000
-  LV2: 20000
-  LV3: 20000
-time:
-  LV1: "1-00:00:00"
-  LV2: "7-00:00:00"
-  LV3: "14-00:00:00"
+
+Path:
+  fastq: data/fastq
+  fastq_renamed: data/fastq_renamed
+  fastq_trimmed: data/fastq_trimmed
+  fastqc_output: data/fastqc
+  assembly_output: data/spades
+  mapping_output: data/bowtie2
+  autometa_output: data/autometa
+  metabat_output: data/metabat
+  eukrep_output: data/eukrep
+  Autometa_databases: /rhome/ctsai085/bigdata/autometa/databases
+
+run_trimmomatic: False
+
+autometa:
+  run_autometa: True
+  binning_target: ['bacteria']    # Available choices ['bacteria', 'archaea']
+  unclustered_recruitment: False   # Experimental features
+
+# Experimental features
+run_euk_detection: False
