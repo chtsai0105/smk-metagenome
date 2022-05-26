@@ -37,10 +37,16 @@ Clone by the following command if you're using public key for github connection.
 git clone --recurse-submodules git@github.com:chtsai0105/metagenome-snakemake.git
 ```
 
-Otherwise, clone by https link.
+Or clone by https link.
 
 ```
 git clone --recurse-submodules https://github.com/chtsai0105/metagenome-snakemake.git
+```
+
+Otherwise, clone the submodules as a second step by:
+```
+cd metagenome-snakemake
+git submodule update --init
 ```
 
 Next, go to the directory by `cd metagenome-snakemake`. It should contains the following files:
@@ -53,7 +59,7 @@ File                    |Description
 `run_snakemake.bash`    |The bash script for running the workflow.
 `data/`                 |The folder for the data and the workflow outputs.
 `envs/`                 |The folder that contains the yaml config for conda environments.
-`includes/`             |The folder that contains the submodules for the main workflow.
+`rules/`                |The folder that contains the submodules for the main workflow.
 `slurm/`                |The folder that contains the slurm profile for stajichlab partition@UCR hpcc.
 
 ## Define the path
