@@ -1,9 +1,61 @@
-DATA = config['Data']
-DATABASES_DIR = config['Autometa_databases']
-ASSEMBLY_OUTPUT = os.path.join(DATA, 'spades')
-MAPPING_OUTPUT = os.path.join(DATA, 'bowtie2')
-BINNING_OUTPUT = os.path.join(DATA, 'autometa')
-BINNING_INTERMEDIATES = os.path.join(BINNING_OUTPUT, '{sample}', 'intermediates')
+DATABASES_DIR = config['Path']['Autometa_databases']
+ASSEMBLY_OUTPUT = config['Path']['assembly_output']
+AUTOMETA_OUTPUT = config['Path']['autometa_output']
+BINNING_INTERMEDIATES = os.path.join(AUTOMETA_OUTPUT, '{sample}', 'intermediates')
+
+### Generate required databases
+rule update_marker_database:
+    output:
+        hmm_bac = "{dir}/markers/bacteria.single_copy.hmm".format(dir=DATABASES_DIR),
+        hmm_arc = "{dir}/markers/archaea.single_copy.hmm".format(dir=DATABASES_DIR)
+    params:
+        dbdir = directory("{dir}/markers".format(dir=DATABASES_DIR)),
+        option = "markers"
+    conda:
+        "envs/autometa.yaml"
+    shell:
+        """
+        mkdir -p {params.dbdir}
+
+        autometa-config \
+            --section databases \
+            --option {params.option} \
+            --value {params.dbdir}
+
+        autometa-update-databases --update-{params.option}
+        """
+
+use rule update_marker_database as update_ncbi_database with:
+    output:
+        nr = ancient("{dir}/ncbi/nr.gz".format(dir=DATABASES_DIR))          # Very time consuming
+    params:
+        dbdir = directory("{dir}/ncbi".format(dir=DATABASES_DIR)),
+        option = "ncbi"
+    resources:
+        time="7-00:00:00",
+        mem_mb=10000
+
+rule diamond:
+    input:
+        rules.update_ncbi_database.output.nr
+    output:
+        ancient("{dir}/ncbi/nr.dmnd".format(dir=DATABASES_DIR))             # Very time consuming
+    params:
+        output = "{}/nr".format(rules.update_ncbi_database.params.dbdir)
+    threads: 20
+    resources:
+        time="7-00:00:00",
+        mem_mb=20000
+    conda:
+        "envs/autometa.yaml"
+    shell:
+        """
+        diamond makedb \
+            --in {input} \
+            --db {params.output} \
+            --threads {threads}
+        """
+###
 
 rule autometa_length_filter:
     input:
@@ -45,8 +97,8 @@ rule autometa_orf:
         prots = "{dir}/predict_orfs.faa".format(dir=BINNING_INTERMEDIATES)
     threads: 4
     resources:
-        time=config['time']['LV2'],
-        mem_mb=config['mem']['LV2']
+        time="7-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 10, 2000) * attempt
     conda:
         "envs/autometa.yaml"
     shell:
@@ -56,27 +108,6 @@ rule autometa_orf:
             --output-nucls {output.nucls} \
             --output-prots {output.prots} \
             --cpus {threads}
-        """
-
-rule update_marker_database:
-    output:
-        hmm_bac = "{dir}/markers/bacteria.single_copy.hmm".format(dir=DATABASES_DIR),
-        hmm_arc = "{dir}/markers/archaea.single_copy.hmm".format(dir=DATABASES_DIR)
-    params:
-        dbdir = directory("{dir}/markers".format(dir=DATABASES_DIR)),
-        option = "markers"
-    conda:
-        "envs/autometa.yaml"
-    shell:
-        """
-        mkdir -p {params.dbdir}
-
-        autometa-config \
-            --section databases \
-            --option {params.option} \
-            --value {params.dbdir}
-
-        autometa-update-databases --update-{params.option}
         """
 
 rule autometa_markers:
@@ -103,38 +134,6 @@ rule autometa_markers:
             --cpus {threads}
         """
 
-use rule update_marker_database as update_ncbi_database with:
-    output:
-        nr = ancient("{dir}/ncbi/nr.gz".format(dir=DATABASES_DIR))          # Very time consuming
-    params:
-        dbdir = directory("{dir}/ncbi".format(dir=DATABASES_DIR)),
-        option = "ncbi"
-    resources:
-        time=config['time']['LV2'],
-        mem_mb=config['mem']['LV2']
-
-
-rule diamond:
-    input:
-        rules.update_ncbi_database.output.nr
-    output:
-        ancient("{dir}/ncbi/nr.dmnd".format(dir=DATABASES_DIR))             # Very time consuming
-    params:
-        output = "{}/nr".format(rules.update_ncbi_database.params.dbdir)
-    threads: 20
-    resources:
-        time=config['time']['LV2'],
-        mem_mb=config['mem']['LV2']
-    conda:
-        "envs/autometa.yaml"
-    shell:
-        """
-        diamond makedb \
-            --in {input} \
-            --db {params.output} \
-            --threads {threads}
-        """
-
 rule diamond_blastp:
     input:
         prots_orf = rules.autometa_orf.output.prots,
@@ -142,6 +141,9 @@ rule diamond_blastp:
     output:
         "{dir}/blastp.tsv".format(dir=BINNING_INTERMEDIATES)                # Very time consuming
     threads: 20
+    resources:
+        time="7-00:00:00",
+        mem_mb=20000
     conda:
         "envs/autometa.yaml"
     shell:
@@ -161,12 +163,12 @@ rule autometa_taxonomy_lca:
         blastp = rules.diamond_blastp.output,
         dbdir = rules.update_ncbi_database.params.dbdir
     output:
-        "{dir}/lca.tsv".format(dir=BINNING_INTERMEDIATES)
+        "{dir}/lca.tsv".format(dir=BINNING_INTERMEDIATES)                   # time consuming
     conda:
         "envs/autometa.yaml"
     resources:
-        time=config['time']['LV2'],
-        mem_mb=config['mem']['LV2']
+        time="3-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 100, 2000) * attempt
     shell:
         """
         autometa-taxonomy-lca \
@@ -184,8 +186,8 @@ rule taxonomy_majority_vote:
     conda:
         "envs/autometa.yaml"
     resources:
-        time=config['time']['LV2'],
-        mem_mb=config['mem']['LV2']
+        time="1-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 100, 2000) * attempt
     shell:
         """
         autometa-taxonomy-majority-vote \
@@ -194,33 +196,41 @@ rule taxonomy_majority_vote:
             --output {output}
         """
 
-rule autometa_taxonomy:
+checkpoint autometa_taxonomy:
     input:
         assembly = rules.autometa_length_filter.output.fasta,
         votes = rules.taxonomy_majority_vote.output,
         dbdir = rules.update_ncbi_database.params.dbdir
     output:
+        dirname = directory("{dir}/taxonomy".format(dir=BINNING_INTERMEDIATES)),
         taxonomy = "{dir}/taxonomy/taxonomy.tsv".format(dir=BINNING_INTERMEDIATES)
-    params:
-        dirname = directory("{dir}/taxonomy".format(dir=BINNING_INTERMEDIATES))
     resources:
-        time=config['time']['LV3'],
-        mem_mb=config['mem']['LV2']
+        time="7-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 1000, 40000) * attempt
     conda:
         "envs/autometa.yaml"
     shell:
         """
         autometa-taxonomy \
             --votes {input.votes} \
-            --output {params.dirname} \
+            --output {output.dirname} \
             --assembly {input.assembly} \
             --ncbi {input.dbdir} \
             --split-rank-and-write superkingdom
         """
 
+def get_superkingdom_fna(wildcards):
+    '''
+    Retreive the dynamically created files (bacteria.fna and archaea.fna)
+    First, retrieve the taxonomy dir from the previous step (checkpoints.autometa_taxonomy)
+    Next, directly return the 
+    '''
+    taxonomy_dir = checkpoints.autometa_taxonomy.get(**wildcards).output[0]
+    return "{dir}/{{kingdom}}.fna".format(dir=taxonomy_dir)
+
 rule autometa_kmers:
     input:
-        fasta = "{dir}/taxonomy/{{kingdom}}.fna".format(dir=BINNING_INTERMEDIATES)
+        get_superkingdom_fna
     output:
         kmers = "{dir}/{{kingdom}}_kmers.tsv".format(dir=BINNING_INTERMEDIATES),
         kmers_norm = "{dir}/{{kingdom}}_kmers_normalized.tsv".format(dir=BINNING_INTERMEDIATES),
@@ -229,14 +239,14 @@ rule autometa_kmers:
         kingdom = "bacteria|archaea"
     threads: 20
     resources:
-        time=config['time']['LV2'],
-        mem_mb=config['mem']['LV2']
+        time="1-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 1000, 40000) * attempt
     conda:
         "envs/autometa.yaml"
     shell:
         """
         autometa-kmers \
-            --fasta {input.fasta} \
+            --fasta {input} \
             --kmers {output.kmers} \
             --size 5 \
             --norm-method am_clr \
@@ -255,14 +265,14 @@ rule autometa_binning:
         markers = rules.autometa_markers.output.markers,
         taxonomy = rules.autometa_taxonomy.output.taxonomy
     output:
-        binning = "{dir}/{{sample}}/{{kingdom}}_binning.tsv".format(dir=BINNING_OUTPUT),
-        main = "{dir}/{{sample}}/{{kingdom}}_main.tsv".format(dir=BINNING_OUTPUT)
+        binning = "{dir}/{{sample}}/{{kingdom}}_binning.tsv".format(dir=AUTOMETA_OUTPUT),
+        main = "{dir}/{{sample}}/{{kingdom}}_main.tsv".format(dir=AUTOMETA_OUTPUT)
     wildcard_constraints:
         kingdom = "bacteria|archaea"
     threads: 10
     resources:
-        time=config['time']['LV2'],
-        mem_mb=config['mem']['LV2']
+        time="1-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 1000, 40000) * attempt
     conda:
         "envs/autometa.yaml"
     shell:
@@ -294,9 +304,9 @@ rule autometa_unclustered_recruitment:
         markers = rules.autometa_markers.output.markers,
         taxonomy = rules.autometa_taxonomy.output.taxonomy
     output:
-        binning = "{dir}/{{sample}}/{{kingdom}}_recruitment_binning.tsv".format(dir=BINNING_OUTPUT),
-        features = "{dir}/{{sample}}/{{kingdom}}_recruitment_features.tsv".format(dir=BINNING_OUTPUT),
-        main = "{dir}/{{sample}}/{{kingdom}}_recruitment_main.tsv".format(dir=BINNING_OUTPUT)
+        binning = "{dir}/{{sample}}/{{kingdom}}_recruitment_binning.tsv".format(dir=AUTOMETA_OUTPUT),
+        features = "{dir}/{{sample}}/{{kingdom}}_recruitment_features.tsv".format(dir=AUTOMETA_OUTPUT),
+        main = "{dir}/{{sample}}/{{kingdom}}_recruitment_main.tsv".format(dir=AUTOMETA_OUTPUT)
     wildcard_constraints:
         kingdom = "bacteria|archaea"
     conda:
@@ -312,7 +322,7 @@ rule autometa_unclustered_recruitment:
             --output-binning {output.binning} \
             --output-features {output.features} \
             --output-main {output.main} \
-            --classifier decision_tree
+            --classifier random_forest
         """
 
 rule autometa_binning_summary:
@@ -322,9 +332,9 @@ rule autometa_binning_summary:
         assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT),
         dbdir = rules.update_ncbi_database.params.dbdir
     output:
-        stats = "{dir}/{{sample}}/{{kingdom}}_metabin_stats.tsv".format(dir=BINNING_OUTPUT),
-        taxonomy = "{dir}/{{sample}}/{{kingdom}}_metabin_taxonomy.tsv".format(dir=BINNING_OUTPUT),
-        metabins = directory("{dir}/{{sample}}/{{kingdom}}_metabins".format(dir=BINNING_OUTPUT))
+        stats = "{dir}/{{sample}}/{{kingdom}}_metabin_stats.tsv".format(dir=AUTOMETA_OUTPUT),
+        taxonomy = "{dir}/{{sample}}/{{kingdom}}_metabin_taxonomy.tsv".format(dir=AUTOMETA_OUTPUT),
+        metabins = directory("{dir}/{{sample}}/{{kingdom}}_metabins".format(dir=AUTOMETA_OUTPUT))
     wildcard_constraints:
         kingdom = "bacteria|archaea"
     conda:
