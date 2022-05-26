@@ -3,10 +3,8 @@ import pandas as pd
 
 
 def extract_ext(path_str):
-    string, ext = os.path.splitext(path_str)
-    if ext == ".gz":
-        ext = os.path.splitext(string)[-1] + ext
-    return ext  # Avoid the "." at the beginning of the ext string
+    ext = Path(path_str).suffixes
+    return "".join(ext)
     
 
 configfile: "config.yaml"
@@ -16,26 +14,72 @@ sample_df['fastq_renamed'] = sample_df['sample'] + sample_df['ext']
 
 ############# Program settings #############
 
-run_trimmomatic = False
-include: "includes/euk_detection.smk"
-include: "includes/autometa.smk"
+
+include: "rules/euk_detection.smk"
+include: "rules/autometa.smk"
 
 ############################################
 
 ############### Path settings ##############
-DATA = config['Data']
-FASTQ = os.path.join(DATA, 'fastq')
-FASTQ_RENAMED = os.path.join(DATA, 'fastq_renamed')
-if run_trimmomatic:
-    FASTQ_TRIMMED = os.path.join(DATA, 'fastq_trimmed')
+FASTQ = config['Path']['fastq']
+FASTQ_RENAMED = config['Path']['fastq_renamed']
+
+if config['run_trimmomatic']:
+    FASTQ_TRIMMED = config['Path']['fastq_trimmed']
 else:
     FASTQ_TRIMMED = FASTQ_RENAMED
-FASTQC_OUTPUT = os.path.join(DATA, 'fastqc')
+FASTQC_OUTPUT = config['Path']['fastqc_output']
 
-ASSEMBLY_OUTPUT = os.path.join(DATA, 'spades')
-MAPPING_OUTPUT = os.path.join(DATA, 'bowtie2')
-BINNING_OUTPUT = os.path.join(DATA, 'autometa')
-EUK_BINNING_OUTPUT = os.path.join(DATA, 'metabat_euk')
+ASSEMBLY_OUTPUT = config['Path']['assembly_output']
+MAPPING_OUTPUT = config['Path']['mapping_output']
+AUTOMETA_OUTPUT = config['Path']['autometa_output']
+METABAT_OUTPUT = config['Path']['metabat_output']
+
+############################################
+
+############### Input settings #############
+
+input_list = list()
+
+input_list.extend(["{dir}/{fastq}".format(dir=FASTQ_RENAMED, fastq=fastq) for fastq in sample_df['fastq_renamed']])
+input_list.extend(["{dir}/pre_trim/{sample}_fastqc.html".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
+input_list.extend(["{dir}/pre_trim/{sample}_fastqc.zip".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
+
+### Trimmomatic and post-trim fastqc
+if config['run_trimmomatic']:
+    input_list.extend(["{dir}/{fastq}".format(dir=FASTQ_TRIMMED, fastq=fastq) for fastq in sample_df['fastq_renamed']])
+    input_list.extend(["{dir}/post_trim/{sample}_fastqc.html".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
+    input_list.extend(["{dir}/post_trim/{sample}_fastqc.zip".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
+
+### Assembly
+input_list.extend(["{dir}/{sample}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT, sample=sample) for sample in sample_df['sample']])
+
+### euk_detection.smk
+if config['run_euk_detection']:
+    input_list.extend(["{dir}/{sample}.bam".format(dir=MAPPING_OUTPUT, sample=sample) for sample in sample_df['sample']])
+    input_list.extend(["{dir}/{sample}.bam.bai".format(dir=MAPPING_OUTPUT, sample=sample) for sample in sample_df['sample']])
+    # input_list.extend(["{dir}/{sample}/bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
+    input_list.extend(["{dir}/{sample}/euk_bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
+    input_list.extend(["{dir}/{sample}/prok_bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
+
+### autometa.smk
+if config['autometa']['run_autometa']:
+    input_list.extend(["{dir}/{sample}/intermediates/filtered.fasta".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])  # filtered_fasta
+    input_list.extend(["{dir}/{sample}/intermediates/coverage.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])  # cov_tab
+    input_list.extend(["{dir}/{sample}/intermediates/blastp.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])    # blastp
+    input_list.extend(["{dir}/{sample}/intermediates/taxonomy/taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])   # taxonomy
+    
+    for kingdom in config['autometa']['binning_target']:
+        input_list.extend(["{dir}/{sample}/intermediates/{kingdom}.markers.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']])  # autometa_markers
+        input_list.extend(["{dir}/{sample}/{kingdom}_binning.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']])  # binning_output
+        input_list.extend(["{dir}/{sample}/{kingdom}_main.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']]) # main_output
+        if config['autometa']['unclustered_recruitment']:
+            input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_binning.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']])    # metabin_stats
+            input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_features.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']]) # metabin_taxonomy
+            input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_main.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']]) # metabin
+        input_list.extend(["{dir}/{sample}/{kingdom}_metabin_stats.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']])    # metabin_stats
+        input_list.extend(["{dir}/{sample}/{kingdom}_metabin_taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']]) # metabin_taxonomy
+        input_list.extend(["{dir}/{sample}/{kingdom}_metabins".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in sample_df['sample']]) # metabin
 
 ############################################
 
@@ -46,31 +90,7 @@ wildcard_constraints:
 
 rule all:
     input:
-        fastq_renamed =     expand("{dir}/{fastq}", dir=FASTQ_RENAMED, fastq=sample_df['fastq_renamed']),
-        fastqc_pre_trim =   expand("{dir}/pre_trim/{sample}_fastqc.{ext}", dir=FASTQC_OUTPUT, sample=sample_df['sample'], ext=["html", "zip"]),
-        # fastq_trimmed =     expand("{dir}/{fastq}", dir=FASTQ_TRIMMED, fastq=sample_df['fastq_renamed']),
-        # fastqc_post_trim =  expand("{dir}/post_trim/{sample}_fastqc.{ext}", dir=FASTQC_OUTPUT, sample=sample_df['sample'], ext=["html", "zip"]),
-        assembly =          expand("{dir}/{sample}/scaffolds.fasta", dir=ASSEMBLY_OUTPUT, sample=sample_df['sample']),
-        mapping_output =    expand("{dir}/{sample}.{ext}", dir=MAPPING_OUTPUT, sample=sample_df['sample'], ext=["bam", "bam.bai"]),
-        ### euk_detection.smk 
-        # euk_bin =           expand("{dir}/{sample}/euk_bin", dir=EUK_BINNING_OUTPUT, sample=sample_df['sample']),
-        #####
-        ### autometa.smk
-        filtered_fasta =    expand("{dir}/{sample}/intermediates/filtered.fasta", dir=BINNING_OUTPUT, sample=sample_df['sample']),
-        # cov_tab =           expand("{dir}/{sample}/coverage.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample']),
-        # autometa_markers =  expand("{dir}/{sample}/{kingdom}.markers.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=["bacteria", "archaea"]),
-        # blastp =            expand("{dir}/{sample}/blastp.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample']),
-        # kingdom_fasta =     expand("{dir}/{sample}/{kingdom}.fasta", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=["bacteria", "archaea"]),
-        taxonomy =          expand("{dir}/{sample}/intermediates/taxonomy/taxonomy.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample']),
-        # binning_output =    expand("{dir}/{sample}/{kingdom}_binning.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        # main_output =       expand("{dir}/{sample}/{kingdom}_main.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        # recruit_binning =   expand("{dir}/{sample}/{kingdom}_recruitment_binning.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        # recruit_features =  expand("{dir}/{sample}/{kingdom}_recruitment_features.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        # recruit_main =      expand("{dir}/{sample}/{kingdom}_recruitment_main.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        metabin_stats = expand("{dir}/{sample}/{kingdom}_metabin_stats.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        metabin_taxonomy = expand("{dir}/{sample}/{kingdom}_metabin_taxonomy.tsv", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea']),
-        metabins = expand("{dir}/{sample}/{kingdom}_metabins", dir=BINNING_OUTPUT, sample=sample_df['sample'], kingdom=['bacteria', 'archaea'])
-        ###
+        input_list
 
 rule rename_input:
     input:
@@ -98,42 +118,41 @@ rule fastqc_pre:
         """
 
 ##### Trimmomatic and post-trim FastQC #####
-if run_trimmomatic:
-    rule trimmomatic:
-        input:
-            rules.rename_input.output
-        output:
-            "{dir}/{{sample}}.{{ext}}".format(dir=FASTQ_TRIMMED)
-        threads: 4
-        conda:
-            "envs/preprocess.yaml"
-        shell:
-            """
-            trimmomatic SE -threads {threads} {input} {output} \
-            ILLUMINACLIP:TruSeq3-SE:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15
-            """
+rule trimmomatic:
+    input:
+        rules.rename_input.output
+    output:
+        "{dir}/{{sample}}.{{ext}}".format(dir=FASTQ_TRIMMED)
+    threads: 4
+    conda:
+        "envs/preprocess.yaml"
+    shell:
+        """
+        trimmomatic SE -threads {threads} {input} {output} \
+        ILLUMINACLIP:TruSeq3-SE:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15
+        """
 
-    use rule fastqc_pre as fastqc_post with:
-        input:
-            lambda wildcards: os.path.join(FASTQ_TRIMMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
-        output:
-            expand("{dir}/post_trim/{{sample}}_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"])
-        params:
-            dirname = "{dir}/post_trim".format(dir=FASTQC_OUTPUT)
+use rule fastqc_pre as fastqc_post with:
+    input:
+        lambda wildcards: os.path.join(FASTQ_TRIMMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
+    output:
+        expand("{dir}/post_trim/{{sample}}_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"])
+    params:
+        dirname = "{dir}/post_trim".format(dir=FASTQC_OUTPUT)
 
 ############################################
 
 rule metaspades:
     input:
-        lambda wildcards: os.path.join(FASTQ_TRIMMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
+        lambda wildcards: os.path.join(FASTQ_TRIMMED if config['run_trimmomatic'] else FASTQ_RENAMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
     output:
         assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
     params:
         dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
     threads: 12
     resources:
-        time=config['time']['LV2'],
-        mem_mb=config['mem']['LV3']
+        time="14-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: (input.size // 1000000) * attempt * 100
     conda:
         "envs/assembler.yaml"
     shell:
@@ -141,10 +160,21 @@ rule metaspades:
         spades.py --meta -o {params.dirname} --12 {input} -t {threads}
         """
 
+rule filter_contig_length:
+    input:
+        rules.metaspades.output.assembly
+    output:
+        "{dir}/{{sample}}_filtered.fasta".format(dir=MAPPING_OUTPUT)
+    conda:
+        "envs/assembler.yaml"
+    shell:
+        """
+        reformat.sh in={input} out={output} minlength=3000
+        """
 
 rule bowtie2_mapping:
     input:
-        assembly = rules.metaspades.output.assembly,
+        assembly = rules.filter_contig_length.output,
         fastq = lambda wildcards: os.path.join(FASTQ_TRIMMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
     output:
         idx = temp(expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"])),
@@ -152,10 +182,10 @@ rule bowtie2_mapping:
         bai = "{dir}/{{sample}}.bam.bai".format(dir=MAPPING_OUTPUT)
     params:
         idx = "{dir}/{{sample}}".format(dir=MAPPING_OUTPUT)
-    threads: 4
+    threads: 8
     resources:
-        time=config['time']['LV1'],
-        mem_mb=config['mem']['LV2']
+        time="1-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: (input.size // 1000000) * attempt * 20
     conda:
         "envs/autometa.yaml"
     shell:
