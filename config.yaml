@@ -6,6 +6,7 @@ Path:
   fastq_trimmed: data/fastq_trimmed
   fastqc_output: data/fastqc
   assembly_output: data/spades
+  filtered_contigs: data/filtered_contigs
   mapping_output: data/bowtie2
   autometa_output: data/autometa
   metabat_output: data/metabat
@@ -13,6 +14,7 @@ Path:
   Autometa_databases: /rhome/ctsai085/bigdata/autometa/databases
 
 run_trimmomatic: False
+align_against_scaffold: True
 
 autometa:
   run_autometa: True

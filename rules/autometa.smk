@@ -1,5 +1,6 @@
 DATABASES_DIR = config['Path']['Autometa_databases']
 ASSEMBLY_OUTPUT = config['Path']['assembly_output']
+FILTERED_CONTIGS = config['Path']['filtered_contigs']
 AUTOMETA_OUTPUT = config['Path']['autometa_output']
 BINNING_INTERMEDIATES = os.path.join(AUTOMETA_OUTPUT, '{sample}', 'intermediates')
 
@@ -61,8 +62,8 @@ rule autometa_length_filter:
     input:
         "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
     output:
-        fasta = "{dir}/filtered.fasta".format(dir=BINNING_INTERMEDIATES),
-        gc_content = "{dir}/gc_content.tsv".format(dir=BINNING_INTERMEDIATES)
+        fasta = "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS),
+        gc_content = "{dir}/{{sample}}_filtered_gc_content.tsv".format(dir=FILTERED_CONTIGS)
     conda:
         "envs/autometa.yaml"
     shell:
@@ -98,7 +99,7 @@ rule autometa_orf:
     threads: 4
     resources:
         time="7-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 10, 2000) * attempt
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/autometa.yaml"
     shell:
@@ -168,7 +169,7 @@ rule autometa_taxonomy_lca:
         "envs/autometa.yaml"
     resources:
         time="3-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 100, 2000) * attempt
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     shell:
         """
         autometa-taxonomy-lca \
@@ -187,7 +188,7 @@ rule taxonomy_majority_vote:
         "envs/autometa.yaml"
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 100, 2000) * attempt
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     shell:
         """
         autometa-taxonomy-majority-vote \
@@ -206,7 +207,7 @@ checkpoint autometa_taxonomy:
         taxonomy = "{dir}/taxonomy/taxonomy.tsv".format(dir=BINNING_INTERMEDIATES)
     resources:
         time="7-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 1000, 40000) * attempt
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/autometa.yaml"
     shell:
@@ -240,7 +241,7 @@ rule autometa_kmers:
     threads: 20
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 1000, 40000) * attempt
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/autometa.yaml"
     shell:
@@ -272,7 +273,7 @@ rule autometa_binning:
     threads: 10
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: max((input.size // 1000000) * 1000, 40000) * attempt
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/autometa.yaml"
     shell:

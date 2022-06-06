@@ -1,14 +1,15 @@
 import os
 import pandas as pd
-
+import re
 
 def extract_ext(path_str):
-    ext = Path(path_str).suffixes
-    return "".join(ext)
+    m = re.search("\.f(ast)?q($|\.gz$)", path_str)
+    ext = m.group()
+    return ext
     
 
 configfile: "config.yaml"
-sample_df = pd.read_csv(config['Metadata'])
+sample_df = pd.read_csv(config['Metadata'], comment="#")
 sample_df['ext'] = sample_df['fastq'].apply(extract_ext)
 sample_df['fastq_renamed'] = sample_df['sample'] + sample_df['ext']
 
@@ -31,6 +32,7 @@ else:
 FASTQC_OUTPUT = config['Path']['fastqc_output']
 
 ASSEMBLY_OUTPUT = config['Path']['assembly_output']
+FILTERED_CONTIGS = config['Path']['filtered_contigs']
 MAPPING_OUTPUT = config['Path']['mapping_output']
 AUTOMETA_OUTPUT = config['Path']['autometa_output']
 METABAT_OUTPUT = config['Path']['metabat_output']
@@ -54,17 +56,20 @@ if config['run_trimmomatic']:
 ### Assembly
 input_list.extend(["{dir}/{sample}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT, sample=sample) for sample in sample_df['sample']])
 
-### euk_detection.smk
-if config['run_euk_detection']:
+if config['align_against_scaffold']:
     input_list.extend(["{dir}/{sample}.bam".format(dir=MAPPING_OUTPUT, sample=sample) for sample in sample_df['sample']])
     input_list.extend(["{dir}/{sample}.bam.bai".format(dir=MAPPING_OUTPUT, sample=sample) for sample in sample_df['sample']])
+    input_list.extend(["{dir}/{sample}.stats".format(dir=MAPPING_OUTPUT, sample=sample) for sample in sample_df['sample']])
+
+### euk_detection.smk
+if config['run_euk_detection']:
     # input_list.extend(["{dir}/{sample}/bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
     input_list.extend(["{dir}/{sample}/euk_bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
     input_list.extend(["{dir}/{sample}/prok_bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
 
 ### autometa.smk
 if config['autometa']['run_autometa']:
-    input_list.extend(["{dir}/{sample}/intermediates/filtered.fasta".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])  # filtered_fasta
+    input_list.extend(["{dir}/{sample}_filtered.fasta".format(dir=FILTERED_CONTIGS, sample=sample) for sample in sample_df['sample']])  # filtered_fasta
     input_list.extend(["{dir}/{sample}/intermediates/coverage.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])  # cov_tab
     input_list.extend(["{dir}/{sample}/intermediates/blastp.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])    # blastp
     input_list.extend(["{dir}/{sample}/intermediates/taxonomy/taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])   # taxonomy
@@ -83,7 +88,7 @@ if config['autometa']['run_autometa']:
 
 ############################################
 
-localrules: rename_input
+localrules: rename_input, samtools_idxstats
 wildcard_constraints:
         ext = "f(ast)?q($|\.gz$)",      # Regex for fastq, fq, fastq.gz and fq.gz as extension
         sample = "[^/]+"                # Regex for all characters except /
@@ -120,7 +125,7 @@ rule fastqc_pre:
 ##### Trimmomatic and post-trim FastQC #####
 rule trimmomatic:
     input:
-        rules.rename_input.output
+        lambda wildcards: os.path.join(FASTQ_RENAMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
     output:
         "{dir}/{{sample}}.{{ext}}".format(dir=FASTQ_TRIMMED)
     threads: 4
@@ -152,7 +157,7 @@ rule metaspades:
     threads: 12
     resources:
         time="14-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: (input.size // 1000000) * attempt * 100
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (1.5 + attempt * 0.5), 50000), 250000)
     conda:
         "envs/assembler.yaml"
     shell:
@@ -160,21 +165,40 @@ rule metaspades:
         spades.py --meta -o {params.dirname} --12 {input} -t {threads}
         """
 
-rule filter_contig_length:
-    input:
-        rules.metaspades.output.assembly
-    output:
-        "{dir}/{{sample}}_filtered.fasta".format(dir=MAPPING_OUTPUT)
-    conda:
-        "envs/assembler.yaml"
-    shell:
-        """
-        reformat.sh in={input} out={output} minlength=3000
-        """
+# rule megahit:
+#     input:
+#         lambda wildcards: os.path.join(FASTQ_TRIMMED if config['run_trimmomatic'] else FASTQ_RENAMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
+#     output:
+#         assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
+#     params:
+#         dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
+#     threads: 12
+#     resources:
+#         time="14-00:00:00",
+#         mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (1.5 + attempt * 0.5), 50000), 250000)
+#     conda:
+#         "envs/assembler.yaml"
+#     shell:
+#         """
+#         megahit --12 {input} -o {params.dirname} -t {threads}
+#         """
+
+
+# checkpoint filter_contig_length:
+#     input:
+#         rules.metaspades.output.assembly
+#     output:
+#         "{dir}/{{sample}}_filtered.fasta".format(dir=MAPPING_OUTPUT)
+#     conda:
+#         "envs/assembler.yaml"
+#     shell:
+#         """
+#         reformat.sh in={input} out={output} minlength=3000
+#         """
 
 rule bowtie2_mapping:
     input:
-        assembly = rules.filter_contig_length.output,
+        assembly = "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS),
         fastq = lambda wildcards: os.path.join(FASTQ_TRIMMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
     output:
         idx = temp(expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"])),
@@ -185,12 +209,22 @@ rule bowtie2_mapping:
     threads: 8
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: (input.size // 1000000) * attempt * 20
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
-        "envs/autometa.yaml"
+        "envs/assembler.yaml"
     shell:
         """
         bowtie2-build {input.assembly} {params.idx}
         bowtie2 -p {threads} -x {params.idx} --interleaved {input.fastq} | samtools view -@ {threads} -Sbhu - | samtools sort -@ {threads} -o {output.bam}
         samtools index {output.bam} {output.bai}
+        """
+
+rule samtools_idxstats:
+    input:
+        rules.bowtie2_mapping.output.bam
+    output:
+        "{dir}/{{sample}}.stats".format(dir=MAPPING_OUTPUT)
+    shell:
+        """
+        samtools idxstats {input} > {output}
         """
