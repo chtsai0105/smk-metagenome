@@ -31,7 +31,10 @@ else:
     FASTQ_TRIMMED = FASTQ_RENAMED
 FASTQC_OUTPUT = config['Path']['fastqc_output']
 
-ASSEMBLY_OUTPUT = config['Path']['assembly_output']
+if config['assembler'] == 'spades':
+    ASSEMBLY_OUTPUT = config['Path']['spades_output']
+elif config['assembler'] == 'megahit':
+    ASSEMBLY_OUTPUT = config['Path']['megahit_output']
 FILTERED_CONTIGS = config['Path']['filtered_contigs']
 MAPPING_OUTPUT = config['Path']['mapping_output']
 AUTOMETA_OUTPUT = config['Path']['autometa_output']
@@ -54,7 +57,9 @@ if config['run_trimmomatic']:
     input_list.extend(["{dir}/post_trim/{sample}_fastqc.zip".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
 
 ### Assembly
-input_list.extend(["{dir}/{sample}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT, sample=sample) for sample in sample_df['sample']])
+# input_list.extend(["{dir}/{sample}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT, sample=sample) for sample in sample_df['sample']])
+input_list.extend(["{dir}/{sample}/contigs_for_pipe.fasta".format(dir=ASSEMBLY_OUTPUT, sample=sample) for sample in sample_df['sample']])
+input_list.extend(["{dir}/{sample}_filtered.fasta".format(dir=FILTERED_CONTIGS, sample=sample) for sample in sample_df['sample']])  # filtered_fasta
 
 if config['align_against_scaffold']:
     input_list.extend(["{dir}/{sample}.bam".format(dir=MAPPING_OUTPUT, sample=sample) for sample in sample_df['sample']])
@@ -69,7 +74,6 @@ if config['run_euk_detection']:
 
 ### autometa.smk
 if config['autometa']['run_autometa']:
-    input_list.extend(["{dir}/{sample}_filtered.fasta".format(dir=FILTERED_CONTIGS, sample=sample) for sample in sample_df['sample']])  # filtered_fasta
     input_list.extend(["{dir}/{sample}/intermediates/coverage.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])  # cov_tab
     input_list.extend(["{dir}/{sample}/intermediates/blastp.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])    # blastp
     input_list.extend(["{dir}/{sample}/intermediates/taxonomy/taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])   # taxonomy
@@ -89,6 +93,17 @@ if config['autometa']['run_autometa']:
 ############################################
 
 localrules: rename_input, samtools_idxstats
+
+if config['assembler'] == 'spades':
+    ruleorder: spades > megahit
+elif config['assembler'] == 'megahit':
+    ruleorder: megahit > spades
+
+if config['autometa']['run_autometa']:
+    ruleorder: autometa_length_filter > filter_contig_length
+else:
+    ruleorder: filter_contig_length > autometa_length_filter
+
 wildcard_constraints:
         ext = "f(ast)?q($|\.gz$)",      # Regex for fastq, fq, fastq.gz and fq.gz as extension
         sample = "[^/]+"                # Regex for all characters except /
@@ -147,11 +162,34 @@ use rule fastqc_pre as fastqc_post with:
 
 ############################################
 
-rule metaspades:
+rule spades:
     input:
         lambda wildcards: os.path.join(FASTQ_TRIMMED if config['run_trimmomatic'] else FASTQ_RENAMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
     output:
-        assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
+        assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT),
+        link = "{dir}/{{sample}}/contigs_for_pipe.fasta".format(dir=ASSEMBLY_OUTPUT)
+    params:
+        dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
+    threads: 12
+    resources:
+        time="14-00:00:00",
+        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (1.5 + attempt * 0.5), 100000), 500000)
+        # Set the mem as input_size(mb) * 10 * (2 for first try, 2.5 for second try and 3 for third try) or at least 100G
+        # and the maximun usage would not excess 500000 (500G)
+    conda:
+        "envs/assembler.yaml"
+    shell:
+        """
+        spades.py --meta -o {params.dirname} --12 {input} -t {threads} -m 500
+        ln -sr {output.assembly} {output.link}
+        """
+
+rule megahit:
+    input:
+        lambda wildcards: os.path.join(FASTQ_TRIMMED if config['run_trimmomatic'] else FASTQ_RENAMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
+    output:
+        assembly = "{dir}/{{sample}}/final.contig.fa".format(dir=ASSEMBLY_OUTPUT),
+        link = "{dir}/{{sample}}/contigs_for_pipe.fasta".format(dir=ASSEMBLY_OUTPUT)
     params:
         dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
     threads: 12
@@ -162,48 +200,44 @@ rule metaspades:
         "envs/assembler.yaml"
     shell:
         """
-        spades.py --meta -o {params.dirname} --12 {input} -t {threads}
+        megahit --12 {input} -o {params.dirname} -t {threads}
+        ln -sr {output.assembly} {output.link}
         """
 
-# rule megahit:
-#     input:
-#         lambda wildcards: os.path.join(FASTQ_TRIMMED if config['run_trimmomatic'] else FASTQ_RENAMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
-#     output:
-#         assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
-#     params:
-#         dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
-#     threads: 12
-#     resources:
-#         time="14-00:00:00",
-#         mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (1.5 + attempt * 0.5), 50000), 250000)
-#     conda:
-#         "envs/assembler.yaml"
-#     shell:
-#         """
-#         megahit --12 {input} -o {params.dirname} -t {threads}
-#         """
+rule filter_contig_length:
+    input:
+        "{dir}/{{sample}}/contigs_for_pipe.fasta".format(dir=ASSEMBLY_OUTPUT)
+    output:
+        "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS)
+    conda:
+        "envs/assembler.yaml"
+    shell:
+        """
+        reformat.sh in={input} out={output} minlength=3000
+        """
 
-
-# checkpoint filter_contig_length:
-#     input:
-#         rules.metaspades.output.assembly
-#     output:
-#         "{dir}/{{sample}}_filtered.fasta".format(dir=MAPPING_OUTPUT)
-#     conda:
-#         "envs/assembler.yaml"
-#     shell:
-#         """
-#         reformat.sh in={input} out={output} minlength=3000
-#         """
+rule bowtie2_index:
+    input:
+        "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS)
+    output:
+        temp(expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"]))
+    params:
+        idx = "{dir}/{{sample}}".format(dir=MAPPING_OUTPUT)
+    conda:
+        "envs/assembler.yaml"
+    shell:
+        """
+        bowtie2-build {input} {params.idx}
+        """
 
 rule bowtie2_mapping:
     input:
-        assembly = "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS),
-        fastq = lambda wildcards: os.path.join(FASTQ_TRIMMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
+        fastq = lambda wildcards: os.path.join(FASTQ_TRIMMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item()),
+        idx = expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"])
     output:
-        idx = temp(expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"])),
         bam = "{dir}/{{sample}}.bam".format(dir=MAPPING_OUTPUT),
-        bai = "{dir}/{{sample}}.bam.bai".format(dir=MAPPING_OUTPUT)
+        bai = "{dir}/{{sample}}.bam.bai".format(dir=MAPPING_OUTPUT),
+        summary = "{dir}/{{sample}}_align_summary.txt".format(dir=MAPPING_OUTPUT)
     params:
         idx = "{dir}/{{sample}}".format(dir=MAPPING_OUTPUT)
     threads: 8
@@ -214,8 +248,7 @@ rule bowtie2_mapping:
         "envs/assembler.yaml"
     shell:
         """
-        bowtie2-build {input.assembly} {params.idx}
-        bowtie2 -p {threads} -x {params.idx} --interleaved {input.fastq} | samtools view -@ {threads} -Sbhu - | samtools sort -@ {threads} -o {output.bam}
+        bowtie2 -p {threads} -x {params.idx} --interleaved {input.fastq} 2> {output.summary} | samtools view -@ {threads} -Sbhu - | samtools sort -@ {threads} -o {output.bam}
         samtools index {output.bam} {output.bai}
         """
 

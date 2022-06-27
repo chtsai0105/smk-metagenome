@@ -1,4 +1,4 @@
-ASSEMBLY_OUTPUT = config['Path']['assembly_output']
+FILTERED_CONTIGS = config['Path']['filtered_contigs']
 MAPPING_OUTPUT = config['Path']['mapping_output']
 EUKREP_OUTPUT = config['Path']['eukrep_output']
 METABAT_OUTPUT = config['Path']['metabat_output']

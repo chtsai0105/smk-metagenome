@@ -1,5 +1,8 @@
 DATABASES_DIR = config['Path']['Autometa_databases']
-ASSEMBLY_OUTPUT = config['Path']['assembly_output']
+if config['assembler'] == 'spades':
+    ASSEMBLY_OUTPUT = config['Path']['spades_output']
+elif config['assembler'] == 'megahit':
+    ASSEMBLY_OUTPUT = config['Path']['megahit_output']
 FILTERED_CONTIGS = config['Path']['filtered_contigs']
 AUTOMETA_OUTPUT = config['Path']['autometa_output']
 BINNING_INTERMEDIATES = os.path.join(AUTOMETA_OUTPUT, '{sample}', 'intermediates')
@@ -60,7 +63,8 @@ rule diamond:
 
 rule autometa_length_filter:
     input:
-        "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
+        # "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
+        "{dir}/{{sample}}/contigs_for_pipe.fasta".format(dir=ASSEMBLY_OUTPUT)
     output:
         fasta = "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS),
         gc_content = "{dir}/{{sample}}_filtered_gc_content.tsv".format(dir=FILTERED_CONTIGS)
@@ -330,7 +334,7 @@ rule autometa_binning_summary:
     input:
         main = rules.autometa_binning.output.main,
         markers = rules.autometa_markers.output.markers,
-        assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT),
+        assembly = rules.autometa_length_filter.output.fasta,
         dbdir = rules.update_ncbi_database.params.dbdir
     output:
         stats = "{dir}/{{sample}}/{{kingdom}}_metabin_stats.tsv".format(dir=AUTOMETA_OUTPUT),
