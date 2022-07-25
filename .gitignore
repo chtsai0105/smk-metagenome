@@ -3,7 +3,6 @@
 
 !.gitignore
 !README.md
-!config.yaml
 !snakefile
 
 !data/.gitkeep

@@ -12,7 +12,7 @@ Path:
   autometa_output: data/autometa
   metabat_output: data/metabat
   eukrep_output: data/eukrep
-  Autometa_databases: /rhome/ctsai085/bigdata/autometa/databases
+  Autometa_databases: /rhome/ctsai085/bigdata/databases/autometa/databases
 
 assembler: spades    # Available choices ['spades', 'megahit']
 min_contig_length: 3000
