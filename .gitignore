@@ -3,10 +3,7 @@
 
 !.gitignore
 !README.md
-!config.yaml
 !snakefile
-!sample.csv
-!run_snakemake.bash
 
 !data/.gitkeep
 !envs

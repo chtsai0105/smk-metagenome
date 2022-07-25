@@ -5,14 +5,19 @@ Path:
   fastq_renamed: data/fastq_renamed
   fastq_trimmed: data/fastq_trimmed
   fastqc_output: data/fastqc
-  assembly_output: data/spades
+  spades_output: data/spades
+  megahit_output: data/megahit
+  filtered_contigs: data/filtered_contigs
   mapping_output: data/bowtie2
   autometa_output: data/autometa
   metabat_output: data/metabat
   eukrep_output: data/eukrep
-  Autometa_databases: /rhome/ctsai085/bigdata/autometa/databases
+  Autometa_databases: /rhome/ctsai085/bigdata/databases/autometa/databases
 
-run_trimmomatic: False
+assembler: spades    # Available choices ['spades', 'megahit']
+min_contig_length: 3000
+run_trimmomatic: True
+align_against_scaffold: True
 
 autometa:
   run_autometa: True
