@@ -16,13 +16,15 @@ Path:
 
 assembler: spades    # Available choices ['spades', 'megahit']
 min_contig_length: 3000
-run_trimmomatic: True
+run_trimmomatic: False
 align_against_scaffold: True
-
-autometa:
-  run_autometa: True
-  binning_target: ['bacteria']    # Available choices ['bacteria', 'archaea']
-  unclustered_recruitment: False   # Experimental features
+run_autometa: False
 
 # Experimental features
 run_euk_detection: False
+run_jorg: True
+
+# Autometa params
+autometa:
+  binning_target: ['bacteria']    # Available choices ['bacteria', 'archaea']
+  unclustered_recruitment: False   # Experimental features
