@@ -15,9 +15,12 @@ sample_df['fastq_renamed'] = sample_df['sample'] + sample_df['ext']
 
 ############# Program settings #############
 
-
-include: "rules/euk_detection.smk"
-include: "rules/autometa.smk"
+if config['run_euk_detection']:
+    include: "rules/euk_detection.smk"
+if config['run_jorg']:
+    include: "rules/jorg.smk"
+if config['run_autometa']:
+    include: "rules/autometa.smk"
 
 ############################################
 
@@ -68,12 +71,15 @@ if config['align_against_scaffold']:
 
 ### euk_detection.smk
 if config['run_euk_detection']:
-    # input_list.extend(["{dir}/{sample}/bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
     input_list.extend(["{dir}/{sample}/euk_bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
     input_list.extend(["{dir}/{sample}/prok_bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
 
+### jorg.smk
+if config['run_jorg']:
+    input_list.extend(["{dir}/{sample}/bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in sample_df['sample']])
+
 ### autometa.smk
-if config['autometa']['run_autometa']:
+if config['run_autometa']:
     input_list.extend(["{dir}/{sample}/intermediates/coverage.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])  # cov_tab
     input_list.extend(["{dir}/{sample}/intermediates/blastp.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])    # blastp
     input_list.extend(["{dir}/{sample}/intermediates/taxonomy/taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in sample_df['sample']])   # taxonomy
@@ -99,10 +105,8 @@ if config['assembler'] == 'spades':
 elif config['assembler'] == 'megahit':
     ruleorder: megahit > spades
 
-if config['autometa']['run_autometa']:
+if config['run_autometa']:
     ruleorder: autometa_length_filter > filter_contig_length
-else:
-    ruleorder: filter_contig_length > autometa_length_filter
 
 wildcard_constraints:
         ext = "f(ast)?q($|\.gz$)",      # Regex for fastq, fq, fastq.gz and fq.gz as extension
@@ -166,7 +170,7 @@ rule spades:
     input:
         lambda wildcards: os.path.join(FASTQ_TRIMMED if config['run_trimmomatic'] else FASTQ_RENAMED, sample_df.loc[sample_df['sample'] == wildcards.sample, 'fastq_renamed'].item())
     output:
-        assembly = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT),
+        assembly = "{dir}/{{sample}}/contigs.fasta".format(dir=ASSEMBLY_OUTPUT),
         link = "{dir}/{{sample}}/contigs_for_pipe.fasta".format(dir=ASSEMBLY_OUTPUT)
     params:
         dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
