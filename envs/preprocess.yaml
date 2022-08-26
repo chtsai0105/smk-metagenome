@@ -3,4 +3,5 @@ channels:
   - bioconda
 dependencies:
   - fastqc
+  - bbmap>=38.93
   - trimmomatic>=0.36

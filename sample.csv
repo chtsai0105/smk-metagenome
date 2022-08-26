@@ -1,4 +1,4 @@
-sample,fastq
-sim_1,sim_1.fastq.gz
-sim_2,sim_2.fastq.gz
-sim_3,sim_3.fastq.gz
+sample,R1,R2,interleaved
+sim_1,,,sim_1.fastq.gz
+sim_2,,,sim_2.fastq.gz
+sim_3,,,sim_3.fastq.gz

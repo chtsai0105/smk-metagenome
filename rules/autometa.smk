@@ -1,12 +1,10 @@
 DATABASES_DIR = config['Path']['Autometa_databases']
-if config['assembler'] == 'spades':
-    ASSEMBLY_OUTPUT = config['Path']['spades_output']
-elif config['assembler'] == 'megahit':
-    ASSEMBLY_OUTPUT = config['Path']['megahit_output']
 FILTERED_CONTIGS = config['Path']['filtered_contigs']
 AUTOMETA_OUTPUT = config['Path']['autometa_output']
 BINNING_INTERMEDIATES = os.path.join(AUTOMETA_OUTPUT, '{sample}', 'intermediates')
 
+
+ruleorder: autometa_length_filter > filter_contig_length
 ### Generate required databases
 rule update_marker_database:
     output:
@@ -63,18 +61,19 @@ rule diamond:
 
 rule autometa_length_filter:
     input:
-        # "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
-        "{dir}/{{sample}}/contigs_for_pipe.fasta".format(dir=ASSEMBLY_OUTPUT)
+        "{dir}/{{sample}}_contigs.fasta".format(dir=FILTERED_CONTIGS)
     output:
         fasta = "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS),
         gc_content = "{dir}/{{sample}}_filtered_gc_content.tsv".format(dir=FILTERED_CONTIGS)
+    params:
+        min_contig_length = config['min_contig_length']
     conda:
         "envs/autometa.yaml"
     shell:
         """
         autometa-length-filter \
             --assembly {input} \
-            --cutoff 3000 \
+            --cutoff {params.min_contig_length} \
             --output-fasta {output.fasta} \
             --output-gc-content {output.gc_content}
         """
@@ -84,6 +83,8 @@ rule autometa_coverage:
         rules.autometa_length_filter.output.fasta
     output:
         "{dir}/coverage.tsv".format(dir=BINNING_INTERMEDIATES)
+    params:
+        spades_flag = "--from-spades" if config['assembler'] == 'spades' else ""
     conda:
         "envs/autometa.yaml"
     shell:
@@ -91,7 +92,7 @@ rule autometa_coverage:
         autometa-coverage \
             --assembly {input} \
             --out {output} \
-            --from-spades
+            {params.spades_flag}
         """
 
 rule autometa_orf:
@@ -228,7 +229,7 @@ def get_superkingdom_fna(wildcards):
     '''
     Retreive the dynamically created files (bacteria.fna and archaea.fna)
     First, retrieve the taxonomy dir from the previous step (checkpoints.autometa_taxonomy)
-    Next, directly return the 
+    Next, return the path of bacteria.fna or archaea.fna as specified in config.yaml
     '''
     taxonomy_dir = checkpoints.autometa_taxonomy.get(**wildcards).output[0]
     return "{dir}/{{kingdom}}.fna".format(dir=taxonomy_dir)

@@ -2,13 +2,12 @@ Metadata: sample.csv
 
 Path:
   fastq: data/fastq
-  fastq_renamed: data/fastq_renamed
   fastq_trimmed: data/fastq_trimmed
   fastqc_output: data/fastqc
   spades_output: data/spades
   megahit_output: data/megahit
   filtered_contigs: data/filtered_contigs
-  mapping_output: data/bowtie2
+  mapping_output: data/bbmap
   autometa_output: data/autometa
   metabat_output: data/metabat
   eukrep_output: data/eukrep
@@ -16,13 +15,14 @@ Path:
 
 assembler: spades    # Available choices ['spades', 'megahit']
 min_contig_length: 3000
-run_trimmomatic: True
+run_trimmomatic: False
 align_against_scaffold: True
 
 autometa:
   run_autometa: True
   binning_target: ['bacteria']    # Available choices ['bacteria', 'archaea']
   unclustered_recruitment: False   # Experimental features
+  align_MAGs: True
 
 # Experimental features
 run_euk_detection: False

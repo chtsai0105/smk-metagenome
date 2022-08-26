@@ -1,5 +1,5 @@
 channels:
   - bioconda
 dependencies:
-  - autometa>=2.0.2
-  - prodigal=2.6.3
+  - autometa>=2.1.0
+  - scipy==1.8.*
