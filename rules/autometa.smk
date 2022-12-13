@@ -1,10 +1,10 @@
-DATABASES_DIR = config['Path']['Autometa_databases']
-FILTERED_CONTIGS = config['Path']['filtered_contigs']
-AUTOMETA_OUTPUT = config['Path']['autometa_output']
+DATABASES_DIR = config['autometa']['databases']
 BINNING_INTERMEDIATES = os.path.join(AUTOMETA_OUTPUT, '{sample}', 'intermediates')
 
+if config['assembly']['run_assembly']:
+    ruleorder: autometa_length_filter > filter_contig_length
 
-ruleorder: autometa_length_filter > filter_contig_length
+
 ### Generate required databases
 rule update_marker_database:
     output:
@@ -66,7 +66,7 @@ rule autometa_length_filter:
         fasta = "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS),
         gc_content = "{dir}/{{sample}}_filtered_gc_content.tsv".format(dir=FILTERED_CONTIGS)
     params:
-        min_contig_length = config['min_contig_length']
+        min_contig_length = config['assembly']['min_contig_length']
     conda:
         "envs/autometa.yaml"
     shell:
@@ -84,7 +84,7 @@ rule autometa_coverage:
     output:
         "{dir}/coverage.tsv".format(dir=BINNING_INTERMEDIATES)
     params:
-        spades_flag = "--from-spades" if config['assembler'] == 'spades' else ""
+        spades_flag = "--from-spades" if config['assembly']['assembler'] == 'spades' else ""
     conda:
         "envs/autometa.yaml"
     shell:
