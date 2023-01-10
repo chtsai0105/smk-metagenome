@@ -1,4 +1,10 @@
 ## Install the workflow manage system [**snakemake**](https://snakemake.readthedocs.io/en/stable/index.html)
+If you're on UCR hpcc you can simply load snakemake from enviornment module.
+```
+module load snakemake
+```
+
+If you're NOT on UCR hpcc and you don't have snakemake in the enviornment module, please follow the below steps to create a snakemake conda environment.
 1. First, create an environment named **snakemake**.
 
     ```
