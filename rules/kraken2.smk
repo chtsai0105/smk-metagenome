@@ -1,5 +1,5 @@
-DB_PATH = config['kraken2']['database']
-DB = 'RefSeq_fungi_bac'
+DB_PATH = config['kraken2']['db_dir']
+DB = config['kraken2']['db_name']
 
 
 rule kraken2_database:
@@ -26,8 +26,8 @@ rule kraken2_database:
 
 rule kraken2_profiling:
     input:
-        R1 = rules.trimmomatic.output.R1_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R1'].item()),
-        R2 = rules.trimmomatic.output.R2_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R2'].item()),
+        R1 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R1'),
+        R2 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R2'),
         database = rules.kraken2_database.output,
     output:
         "{dir}/{{sample}}_kraken2.tsv".format(dir=KRAKEN2_OUTPUT)
