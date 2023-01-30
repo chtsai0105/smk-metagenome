@@ -13,7 +13,8 @@ trimming:   # Experimental feature
 
 kraken2:
   run_kraken2: False
-  database: /bigdata/stajichlab/shared/db/kraken2
+  db_dir: /bigdata/stajichlab/shared/db/kraken2
+  db_name: RefSeq_fungi_bac
   output: data/kraken2
 
 assembly:

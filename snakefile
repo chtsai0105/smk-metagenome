@@ -3,9 +3,26 @@ import pandas as pd
 import re
 
 def extract_ext(path_str):
+    '''
+    Match extensions for .fastq, .fq, .fastq.gz, .fq.gz
+    '''
     m = re.search("\.f(ast)?q($|\.gz$)", path_str)
     ext = m.group()
     return ext
+
+def fastq_input(wildcards, p, r):
+    if r not in ('R1', 'R2', 'interleaved'):
+        print("Error, only accept R1, R2 or interleaved")
+    return os.path.join(p, sample_df.loc[sample_df['sample'] == wildcards.sample, r].item())
+
+def fastqc_input(wildcards, p):
+    r = re.compile("{}.*".format(wildcards.sample))
+    f = list(filter(r.match, sample_df[['R1', 'R2']].melt()['value']))[0]
+    return os.path.join(p, f)
+
+def trimmed_fastq_input(wildcards, p, r):
+    return os.path.join(p, sample_df.loc[sample_df['sample'] == wildcards.sample, 'sample'].item()) + '_{}.fastq.gz'.format(r)
+
     
 ############### Configuration ##############
 configfile: "config.yaml"
@@ -14,9 +31,9 @@ for idx, v in sample_df.iterrows():
     if v['R1'] != "" and v['R2'] != "" and v['interleaved'] == "":
         sample_df.loc[idx, 'ext'] = extract_ext(v['R1'])
     elif v['R1'] == "" and v['R2'] == "" and v['interleaved'] != "":
-        sample_df.loc[idx, 'ext'] = extract_ext(v['interleaved'])
-        sample_df.loc[idx, 'R1'] = sample_df.loc[idx, 'sample'] + '_R1' + sample_df.loc[idx, 'ext']
-        sample_df.loc[idx, 'R2'] = sample_df.loc[idx, 'sample'] + '_R2' + sample_df.loc[idx, 'ext']
+        sample_df.loc[idx, 'ext'] = '.fastq.gz'
+        sample_df.loc[idx, 'R1'] = sample_df.loc[idx, 'sample'] + '_deinterleaved_R1' + sample_df.loc[idx, 'ext']
+        sample_df.loc[idx, 'R2'] = sample_df.loc[idx, 'sample'] + '_deinterleaved_R2' + sample_df.loc[idx, 'ext']
 
 
 ############### Input settings #############
@@ -28,10 +45,10 @@ input_list.extend(["{dir}/{fastq}".format(dir=FASTQ, fastq=fastq) for fastq in s
 
 FASTQC_OUTPUT = config['fastqc']['output']
 if config['fastqc']['run_pretrim_qc']:
-    input_list.extend(["{dir}/pre_trim/{sample}_R1_fastqc.html".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
-    input_list.extend(["{dir}/pre_trim/{sample}_R1_fastqc.zip".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
-    input_list.extend(["{dir}/pre_trim/{sample}_R2_fastqc.html".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
-    input_list.extend(["{dir}/pre_trim/{sample}_R2_fastqc.zip".format(dir=FASTQC_OUTPUT, sample=sample) for sample in sample_df['sample']])
+    R1_base = sample_df.apply(lambda row : row['R1'].replace(row['ext'], ''), axis=1).tolist()
+    R2_base = sample_df.apply(lambda row : row['R2'].replace(row['ext'], ''), axis=1).tolist()
+    input_list.extend(["{dir}/pre_trim/{fastq}_fastqc.html".format(dir=FASTQC_OUTPUT, fastq=fastq) for fastq in R1_base + R2_base])
+    input_list.extend(["{dir}/pre_trim/{fastq}_fastqc.zip".format(dir=FASTQC_OUTPUT, fastq=fastq) for fastq in R1_base + R2_base])
 
 ### Trimmomatic and post-trim fastqc
 FASTQ_TRIMMED = config['trimming']['output']
@@ -97,9 +114,10 @@ if config['post_checkup']['align_MAGs']:
         input_list.extend(["{dir}/{sample}.stats".format(dir=MAPPING_OUTPUT, sample=sample) for sample in sample_df['sample']])
 
 
+print(input_list)
+print(sample_df)
 ############### Rules ######################
 wildcard_constraints:
-        # ext = "f(ast)?q($|\.gz$)",      # Regex for fastq, fq, fastq.gz and fq.gz as extension
         sample = "[^/]+"                # Regex for all characters except /
 
 rule all:
@@ -108,10 +126,10 @@ rule all:
 
 rule deinterleave:
     input:
-        lambda wildcards: os.path.abspath(os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'interleaved'].item()))
+        lambda wildcards: fastq_input(wildcards, FASTQ, 'interleaved')
     output:
-        R1 = "{dir}/{{sample}}_R1.fastq.gz".format(dir=FASTQ),
-        R2 = "{dir}/{{sample}}_R2.fastq.gz".format(dir=FASTQ)
+        R1 = "{dir}/{{sample}}_deinterleaved_R1.fastq.gz".format(dir=FASTQ),
+        R2 = "{dir}/{{sample}}_deinterleaved_R2.fastq.gz".format(dir=FASTQ)
     conda:
         "envs/preprocess.yaml"
     shell:
@@ -121,11 +139,9 @@ rule deinterleave:
 
 rule fastqc_pre:
     input:
-        lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R1'].item()),
-        lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R2'].item())
+        lambda wildcards: fastqc_input(wildcards, FASTQ)
     output:
-        expand("{dir}/pre_trim/{{sample}}_R1_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"]),
-        expand("{dir}/pre_trim/{{sample}}_R2_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"])
+        expand("{dir}/pre_trim/{{sample}}_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"])
     params:
         dirname = "{dir}/pre_trim".format(dir=FASTQC_OUTPUT)
     threads: 4
@@ -139,8 +155,8 @@ rule fastqc_pre:
 ##### Trimmomatic and post-trim FastQC #####
 rule trimmomatic:
     input:
-        R1 = lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R1'].item()),
-        R2 = lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R2'].item())
+        R1 = lambda wildcards: fastq_input(wildcards, FASTQ, 'R1'),
+        R2 = lambda wildcards: fastq_input(wildcards, FASTQ, 'R2')
     output:
         R1_paired = "{dir}/{{sample}}_R1.fastq.gz".format(dir=FASTQ_TRIMMED),
         R1_unpaired = "{dir}/{{sample}}_R1_unpaired.fastq.gz".format(dir=FASTQ_TRIMMED),
@@ -157,11 +173,9 @@ rule trimmomatic:
 
 use rule fastqc_pre as fastqc_post with:
     input:
-        rules.trimmomatic.output.R1_paired,
-        rules.trimmomatic.output.R2_paired
+        lambda wildcards: rules.trimmomatic.output.R1_paired if wildcards.read == 'R1' else rules.trimmomatic.output.R2_paired
     output:
-        expand("{dir}/post_trim/{{sample}}_R1_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"]),
-        expand("{dir}/post_trim/{{sample}}_R2_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"])
+        expand("{dir}/post_trim/{{sample}}_{{read}}_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"])
     params:
         dirname = "{dir}/post_trim".format(dir=FASTQC_OUTPUT)
 ############################################

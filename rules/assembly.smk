@@ -5,11 +5,10 @@ if config['assembly']['assembler'] == 'spades':
 else:
     ruleorder: megahit > spades
 
-
 rule spades:
     input:
-        R1 = rules.trimmomatic.output.R1_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R1'].item()),
-        R2 = rules.trimmomatic.output.R2_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R2'].item())
+        R1 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R1'),
+        R2 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R2')
     output:
         "{dir}/{{sample}}/contigs.fasta".format(dir=ASSEMBLY_OUTPUT)
     params:
@@ -29,8 +28,8 @@ rule spades:
 
 rule megahit:
     input:
-        R1 = rules.trimmomatic.output.R1_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R1'].item()),
-        R2 = rules.trimmomatic.output.R2_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R2'].item())
+        R1 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else lambda wildcards: fastq_input(wildcards, FASTQ, 'R1'),
+        R2 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else lambda wildcards: fastq_input(wildcards, FASTQ, 'R2')
     output:
         "{dir}/{{sample}}/final.contig.fa".format(dir=ASSEMBLY_OUTPUT)
     params:

@@ -3,8 +3,8 @@ localrules: add_unmapped_reads
 rule bbsplit_align_MAGs:
     input:
         genomes = directory("{dir}/{{sample}}/bacteria_metabins".format(dir=AUTOMETA_OUTPUT)),
-        R1 = rules.trimmomatic.output.R1_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R1'].item()),
-        R2 = rules.trimmomatic.output.R2_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R2'].item())
+        R1 = lambda wildcards: fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else lambda wildcards: fastq_input(wildcards, FASTQ, 'R1'),
+        R2 = lambda wildcards: fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else lambda wildcards: fastq_input(wildcards, FASTQ, 'R2')
     output:
         idx = temp(directory("{dir}/{{sample}}_ref".format(dir=MAPPING_OUTPUT))),
         refstats = temp("{dir}/{{sample}}_temp_refstats.tsv".format(dir=MAPPING_OUTPUT)),
@@ -50,8 +50,8 @@ rule bowtie2_index:
 
 rule bowtie2_mapping:
     input:
-        R1 = rules.trimmomatic.output.R1_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R1'].item()),
-        R2 = rules.trimmomatic.output.R2_paired if config['trimming']['run_trimmomatic'] else lambda wildcards: os.path.join(FASTQ, sample_df.loc[sample_df['sample'] == wildcards.sample, 'R2'].item()),
+        R1 = lambda wildcards: fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else lambda wildcards: fastq_input(wildcards, FASTQ, 'R1'),
+        R2 = lambda wildcards: fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else lambda wildcards: fastq_input(wildcards, FASTQ, 'R2'),
         idx = expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"])
     output:
         bam = "{dir}/{{sample}}.bam".format(dir=MAPPING_OUTPUT),
