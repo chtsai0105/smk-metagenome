@@ -114,8 +114,6 @@ if config['post_checkup']['align_MAGs']:
         input_list.extend(["{dir}/{sample}.stats".format(dir=MAPPING_OUTPUT, sample=sample) for sample in sample_df['sample']])
 
 
-print(input_list)
-print(sample_df)
 ############### Rules ######################
 wildcard_constraints:
         sample = "[^/]+"                # Regex for all characters except /
