@@ -31,7 +31,7 @@ rule megahit:
         R2 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R2', ext='.fastq.gz') if config['trimming']['run']
             else data.unified_samples(w.sample, FASTQ, read='R2', column='renamed_fastq')
     output:
-        "{dir}/{{sample}}/final.contig.fa".format(dir=ASSEMBLY_OUTPUT)
+        "{dir}/{{sample}}/final.contigs.fa".format(dir=ASSEMBLY_OUTPUT)
     params:
         dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
     threads: 12
