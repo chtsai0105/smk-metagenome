@@ -4,8 +4,8 @@ DB = config['kraken2']['db_name']
 
 rule kraken2_database:
     output:
-        ancient("{dir}/{db}".format(dir=DB_PATH, db=DB))        # Extremly time consuming
-    threads: 8
+        "{dir}/{db}".format(dir=DB_PATH, db=DB)        # Extremly time consuming
+    threads: 12
     params:
         db_path = DB_PATH,
         db = DB
@@ -26,9 +26,11 @@ rule kraken2_database:
 
 rule kraken2_profiling:
     input:
-        R1 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R1'),
-        R2 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R2'),
-        database = rules.kraken2_database.output,
+        R1 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R1', ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, read='R1', column='renamed_fastq'),
+        R2 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R2', ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, read='R2', column='renamed_fastq'),
+        database = rules.kraken2_database.output
     output:
         "{dir}/{{sample}}_kraken2.tsv".format(dir=KRAKEN2_OUTPUT)
     threads: 8

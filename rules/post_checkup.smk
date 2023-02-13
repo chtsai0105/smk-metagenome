@@ -1,10 +1,12 @@
-localrules: add_unmapped_reads
+localrules: add_unmapped_reads, samtools_idxstats
 
 rule bbsplit_align_MAGs:
     input:
-        genomes = directory("{dir}/{{sample}}/bacteria_metabins".format(dir=AUTOMETA_OUTPUT)),
-        R1 = lambda wildcards: fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R1'),
-        R2 = lambda wildcards: fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R2')
+        genomes = "{dir}/{{sample}}/bacteria_metabins".format(dir=AUTOMETA_OUTPUT),
+        R1 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R1', ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, read='R1', column='renamed_fastq'),
+        R2 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R2', ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, read='R2', column='renamed_fastq')
     output:
         idx = temp(directory("{dir}/{{sample}}_ref".format(dir=MAPPING_OUTPUT))),
         refstats = temp("{dir}/{{sample}}_temp_refstats.tsv".format(dir=MAPPING_OUTPUT)),
@@ -12,7 +14,7 @@ rule bbsplit_align_MAGs:
     threads: 8
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/preprocess.yaml"
     shell:
@@ -50,8 +52,10 @@ rule bowtie2_index:
 
 rule bowtie2_mapping:
     input:
-        R1 = lambda wildcards: fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R1'),
-        R2 = lambda wildcards: fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R2'),
+        R1 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R1', ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, read='R1', column='renamed_fastq'),
+        R2 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R2', ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, read='R2', column='renamed_fastq'),
         idx = expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"])
     output:
         bam = "{dir}/{{sample}}.bam".format(dir=MAPPING_OUTPUT),
@@ -62,7 +66,7 @@ rule bowtie2_mapping:
     threads: 8
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/assembler.yaml"
     shell:

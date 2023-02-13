@@ -7,29 +7,29 @@ else:
 
 rule spades:
     input:
-        R1 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R1'),
-        R2 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else fastq_input(wildcards, FASTQ, 'R2')
+        lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, column='renamed_fastq')
     output:
-        "{dir}/{{sample}}/contigs.fasta".format(dir=ASSEMBLY_OUTPUT)
-    params:
-        dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
+        contigs = "{dir}/{{sample}}/contigs.fasta".format(dir=ASSEMBLY_OUTPUT),
+        scaffolds = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT),
+        dir = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
     threads: 12
     resources:
         time="14-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (1.5 + attempt * 0.5), 100000), 500000)
-        # Set the mem as input_size(mb) * 10 * (2 for first try, 2.5 for second try and 3 for third try) or at least 100G
-        # and the maximun usage would not excess 500000 (500G)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (2 + attempt), 100000), 600000)
+        # Set the mem as input_size(mb) * 10 * (3 for first try, 4 for second try and 5 for third try) or at least 100G
+        # and the maximun usage would not excess 600000 (600G)
     conda:
         "envs/assembler.yaml"
-    shell:
-        """
-        spades.py --meta -o {params.dirname} -1 {input.R1} -2 {input.R2} -t {threads} -m 500
-        """
+    wrapper:
+        "v1.21.6/bio/spades/metaspades"
 
 rule megahit:
     input:
-        R1 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R1') if config['trimming']['run_trimmomatic'] else lambda wildcards: fastq_input(wildcards, FASTQ, 'R1'),
-        R2 = lambda wildcards: trimmed_fastq_input(wildcards, FASTQ_TRIMMED, 'R2') if config['trimming']['run_trimmomatic'] else lambda wildcards: fastq_input(wildcards, FASTQ, 'R2')
+        R1 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R1', ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, read='R1', column='renamed_fastq'),
+        R2 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R2', ext='.fastq.gz') if config['trimming']['run']
+            else data.unified_samples(w.sample, FASTQ, read='R2', column='renamed_fastq')
     output:
         "{dir}/{{sample}}/final.contig.fa".format(dir=ASSEMBLY_OUTPUT)
     params:
@@ -37,7 +37,7 @@ rule megahit:
     threads: 12
     resources:
         time="14-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (1.5 + attempt * 0.5), 50000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (1.5 + attempt * 0.5), 50000), 250000)
     conda:
         "envs/assembler.yaml"
     shell:

@@ -4,40 +4,36 @@ raw_data:
   fastq: data/fastq
 
 fastqc:
-  run_pretrim_qc: False
+  run: True
   output: data/fastqc
 
 trimming:   # Experimental feature
-  run_trimmomatic: False
+  run: True
   output: data/fastq_trimmed
 
 kraken2:
-  run_kraken2: False
+  run: True
   db_dir: /bigdata/stajichlab/shared/db/kraken2
   db_name: RefSeq_fungi_bac
   output: data/kraken2
 
 assembly:
-  run_assembly: True
-  assembler: spades    # Available choices ['spades', 'megahit']
-  output: data/spades
-  # output: data/megahit
+  run: True
+  assembler: megahit    # Available choices ['spades', 'megahit']
+  # output: data/spades
+  output: data/megahit
   min_contig_length: 3000
   filtered_contigs: data/filtered_contigs
 
-# postassembled_alignment:
-#   run_alignment: True
-#   output: data/bbmap
-
 autometa:
-  run_autometa: True
+  run: True
   databases: /rhome/ctsai085/bigdata/databases/autometa/databases
   output: data/autometa
   binning_target: ['bacteria']    # Available options ['bacteria', 'archaea']
   unclustered_recruitment: False   # Experimental features
 
-post_checkup:
-  align_MAGs: True
+align_MAGs:
+  run: True
   tools: 'bowtie2'       # Available choices ['bbmap', 'bowtie2']
   output: data/bowtie2
   # output: data/bbmap

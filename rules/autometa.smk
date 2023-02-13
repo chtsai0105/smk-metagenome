@@ -1,7 +1,7 @@
 DATABASES_DIR = config['autometa']['databases']
 BINNING_INTERMEDIATES = os.path.join(AUTOMETA_OUTPUT, '{sample}', 'intermediates')
 
-if config['assembly']['run_assembly']:
+if config['assembly']['run']:
     ruleorder: autometa_length_filter > filter_contig_length
 
 
@@ -11,7 +11,7 @@ rule update_marker_database:
         hmm_bac = "{dir}/markers/bacteria.single_copy.hmm".format(dir=DATABASES_DIR),
         hmm_arc = "{dir}/markers/archaea.single_copy.hmm".format(dir=DATABASES_DIR)
     params:
-        dbdir = directory("{dir}/markers".format(dir=DATABASES_DIR)),
+        dbdir = "{dir}/markers".format(dir=DATABASES_DIR),
         option = "markers"
     conda:
         "envs/autometa.yaml"
@@ -29,9 +29,9 @@ rule update_marker_database:
 
 use rule update_marker_database as update_ncbi_database with:
     output:
-        nr = ancient("{dir}/ncbi/nr.gz".format(dir=DATABASES_DIR))          # Very time consuming
+        nr = "{dir}/ncbi/nr.gz".format(dir=DATABASES_DIR)               # Very time consuming
     params:
-        dbdir = directory("{dir}/ncbi".format(dir=DATABASES_DIR)),
+        dbdir = "{dir}/ncbi".format(dir=DATABASES_DIR),
         option = "ncbi"
     resources:
         time="7-00:00:00",
@@ -39,9 +39,9 @@ use rule update_marker_database as update_ncbi_database with:
 
 rule diamond:
     input:
-        rules.update_ncbi_database.output.nr
+        ancient(rules.update_ncbi_database.output.nr)
     output:
-        ancient("{dir}/ncbi/nr.dmnd".format(dir=DATABASES_DIR))             # Very time consuming
+        "{dir}/ncbi/nr.dmnd".format(dir=DATABASES_DIR)                  # Very time consuming
     params:
         output = "{}/nr".format(rules.update_ncbi_database.params.dbdir)
     threads: 20
@@ -104,7 +104,7 @@ rule autometa_orf:
     threads: 4
     resources:
         time="7-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/autometa.yaml"
     shell:
@@ -145,7 +145,7 @@ rule diamond_blastp:
         prots_orf = rules.autometa_orf.output.prots,
         db = rules.diamond.output
     output:
-        "{dir}/blastp.tsv".format(dir=BINNING_INTERMEDIATES)                # Very time consuming
+        "{dir}/blastp.tsv".format(dir=BINNING_INTERMEDIATES)        # Very time consuming
     threads: 20
     resources:
         time="7-00:00:00",
@@ -169,12 +169,12 @@ rule autometa_taxonomy_lca:
         blastp = rules.diamond_blastp.output,
         dbdir = rules.update_ncbi_database.params.dbdir
     output:
-        "{dir}/lca.tsv".format(dir=BINNING_INTERMEDIATES)                   # time consuming
+        "{dir}/lca.tsv".format(dir=BINNING_INTERMEDIATES)           # time consuming
     conda:
         "envs/autometa.yaml"
     resources:
         time="3-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     shell:
         """
         autometa-taxonomy-lca \
@@ -193,7 +193,7 @@ rule taxonomy_majority_vote:
         "envs/autometa.yaml"
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     shell:
         """
         autometa-taxonomy-majority-vote \
@@ -212,7 +212,7 @@ checkpoint autometa_taxonomy:
         taxonomy = "{dir}/taxonomy/taxonomy.tsv".format(dir=BINNING_INTERMEDIATES)
     resources:
         time="7-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/autometa.yaml"
     shell:
@@ -246,7 +246,7 @@ rule autometa_kmers:
     threads: 20
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/autometa.yaml"
     shell:
@@ -278,7 +278,7 @@ rule autometa_binning:
     threads: 10
     resources:
         time="1-00:00:00",
-        mem_mb=lambda wildcards, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
+        mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
         "envs/autometa.yaml"
     shell:
