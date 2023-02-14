@@ -13,15 +13,15 @@ trimming:   # Experimental feature
 
 kraken2:
   run: True
-  db_dir: /bigdata/stajichlab/shared/db/kraken2
-  db_name: RefSeq_fungi_bac
+  db_parent_dir: /bigdata/stajichlab/shared/db/kraken2
+  db: RefSeq_fungi_bac
   output: data/kraken2
 
 assembly:
   run: True
-  assembler: megahit    # Available choices ['spades', 'megahit']
-  # output: data/spades
-  output: data/megahit
+  assembler: spades    # Available choices ['spades', 'megahit']
+  output: data/spades
+  # output: data/megahit
   min_contig_length: 3000
   filtered_contigs: data/filtered_contigs
 

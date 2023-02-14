@@ -19,7 +19,8 @@ rule bbsplit_align_MAGs:
         "envs/preprocess.yaml"
     shell:
         """
-        bbsplit.sh -Xmx{resources.mem_mb}m threads={threads} ref={input.genomes} path={output.idx} in={input.R1} in2={input.R2} refstats={output.refstats} 2> {output.log}
+        bbsplit.sh -Xmx{resources.mem_mb}m threads={threads} ref={input.genomes} path={output.idx} \
+        in={input.R1} in2={input.R2} refstats={output.refstats} 2> {output.log}
         """
 
 rule add_unmapped_reads:
@@ -71,7 +72,8 @@ rule bowtie2_mapping:
         "envs/assembler.yaml"
     shell:
         """
-        bowtie2 -p {threads} -x {params.idx} -1 {input.R1} -2 {input.R2} 2> {output.summary} | samtools view -@ {threads} -Sbhu - | samtools sort -@ {threads} -o {output.bam}
+        bowtie2 -p {threads} -x {params.idx} -1 {input.R1} -2 {input.R2} 2> {output.summary} |\
+        samtools view -@ {threads} -Sbhu - | samtools sort -@ {threads} -o {output.bam}
         samtools index {output.bam} {output.bai}
         """
 

@@ -218,7 +218,8 @@ rule trimmomatic:
         "envs/preprocess.yaml"
     shell:
         """
-        trimmomatic PE -threads {threads} {input.R1} {input.R2} {output.R1_paired} {output.R1_unpaired} {output.R2_paired} {output.R2_unpaired} \
+        trimmomatic PE -threads {threads} {input.R1} {input.R2} \
+        {output.R1_paired} {output.R1_unpaired} {output.R2_paired} {output.R2_unpaired} \
         ILLUMINACLIP:TruSeq3-SE:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15
         """
 
