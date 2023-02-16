@@ -80,20 +80,18 @@ rule autometa_length_filter:
 
 rule autometa_coverage:
     input:
-        rules.autometa_length_filter.output.fasta
+        fasta = rules.autometa_length_filter.output.fasta,
+        bam = "{dir}/{{sample}}.bam".format(dir=MAPPING_OUTPUT) if config['assembly']['assembler'] != 'spades' else []
     output:
         "{dir}/coverage.tsv".format(dir=BINNING_INTERMEDIATES)
+    threads: 8
     params:
-        spades_flag = "--from-spades" if config['assembly']['assembler'] == 'spades' else ""
+        spades = True if config['assembly']['assembler'] == 'spades' else False
     conda:
         "envs/autometa.yaml"
-    shell:
-        """
-        autometa-coverage \
-            --assembly {input} \
-            --out {output} \
-            {params.spades_flag}
-        """
+    wrapper:
+        "file:wrappers/autometa-coverage"
+
 
 rule autometa_orf:
     input:
