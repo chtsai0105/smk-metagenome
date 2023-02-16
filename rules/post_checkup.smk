@@ -16,7 +16,7 @@ rule bbsplit_align_MAGs:
         time="1-00:00:00",
         mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
-        "envs/preprocess.yaml"
+        "envs/alignment.yaml"
     shell:
         """
         bbsplit.sh -Xmx{resources.mem_mb}m threads={threads} ref={input.genomes} path={output.idx} \
@@ -45,7 +45,7 @@ rule bowtie2_index:
     params:
         idx = "{dir}/{{sample}}".format(dir=MAPPING_OUTPUT)
     conda:
-        "envs/assembler.yaml"
+        "envs/alignment.yaml"
     shell:
         """
         bowtie2-build {input} {params.idx}
@@ -60,7 +60,6 @@ rule bowtie2_mapping:
         idx = expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"])
     output:
         bam = "{dir}/{{sample}}.bam".format(dir=MAPPING_OUTPUT),
-        bai = "{dir}/{{sample}}.bam.bai".format(dir=MAPPING_OUTPUT),
         summary = "{dir}/{{sample}}_align_summary.txt".format(dir=MAPPING_OUTPUT)
     params:
         idx = "{dir}/{{sample}}".format(dir=MAPPING_OUTPUT)
@@ -69,20 +68,34 @@ rule bowtie2_mapping:
         time="1-00:00:00",
         mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
     conda:
-        "envs/assembler.yaml"
+        "envs/alignment.yaml"
     shell:
         """
         bowtie2 -p {threads} -x {params.idx} -1 {input.R1} -2 {input.R2} 2> {output.summary} |\
         samtools view -@ {threads} -Sbhu - | samtools sort -@ {threads} -o {output.bam}
-        samtools index {output.bam} {output.bai}
+        """
+
+rule samtools_index:
+    input:
+        rules.bowtie2_mapping.output.bam
+    output:
+        "{dir}/{{sample}}.bam.bai".format(dir=MAPPING_OUTPUT)
+    conda:
+        "envs/alignment.yaml"
+    shell:
+        """
+        samtools index {input} {output}
         """
 
 rule samtools_idxstats:
     input:
-        rules.bowtie2_mapping.output.bam
+        bam = rules.bowtie2_mapping.output.bam,
+        bai = rules.samtools_index.output
     output:
         "{dir}/{{sample}}.stats".format(dir=MAPPING_OUTPUT)
+    conda:
+        "envs/alignment.yaml"
     shell:
         """
-        samtools idxstats {input} > {output}
+        samtools idxstats {input.bam} > {output}
         """

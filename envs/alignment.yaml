@@ -1,0 +1,7 @@
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - bbmap>=38.93
+  - bowtie2>=2.4.5
+  - samtools>=1.14
