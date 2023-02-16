@@ -7,12 +7,13 @@ else:
 
 rule spades:
     input:
-        lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, ext='.fastq.gz') if config['trimming']['run']
+        reads = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, ext='.fastq.gz') if config['trimming']['run']
             else data.unified_samples(w.sample, FASTQ, column='renamed_fastq')
     output:
         contigs = "{dir}/{{sample}}/contigs.fasta".format(dir=ASSEMBLY_OUTPUT),
-        scaffolds = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT),
-        dir = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
+        scaffolds = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
+    log:
+        "logs/spades_{sample}.log",
     threads: 12
     resources:
         time="14-00:00:00",
@@ -22,7 +23,7 @@ rule spades:
     conda:
         "envs/assembler.yaml"
     wrapper:
-        "v1.21.6/bio/spades/metaspades"
+        "file:wrappers/metaspades"
 
 rule megahit:
     input:
@@ -47,7 +48,7 @@ rule megahit:
 
 rule contig_link:
     input:
-        rules.spades.output if config['assembly']['assembler'] == 'spades' else rules.megahit.output
+        rules.spades.output.contigs if config['assembly']['assembler'] == 'spades' else rules.megahit.output
     output:
         "{dir}/{{sample}}_contigs.fasta".format(dir=FILTERED_CONTIGS)
     shell:
