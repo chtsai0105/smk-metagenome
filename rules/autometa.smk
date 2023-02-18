@@ -219,7 +219,8 @@ checkpoint autometa_taxonomy:
             --votes {input.votes} \
             --output {output.dirname} \
             --assembly {input.assembly} \
-            --ncbi {input.dbdir} \
+            --dbdir {input.dbdir} \
+            --dbtype ncbi \
             --split-rank-and-write superkingdom
         """
 
@@ -349,7 +350,8 @@ rule autometa_binning_summary:
             --binning-main {input.main} \
             --markers {input.markers} \
             --metagenome {input.assembly} \
-            --ncbi {input.dbdir} \
+            --dbdir {input.dbdir} \
+            --dbtype ncbi \
             --output-stats {output.stats} \
             --output-taxonomy {output.taxonomy} \
             --output-metabins {output.metabins}
