@@ -25,6 +25,12 @@ assembly:
   min_contig_length: 3000
   filtered_contigs: data/filtered_contigs
 
+align_to_assembly:
+  run: True
+  tools: 'bowtie2'       # Available choices ['bbmap', 'bowtie2']
+  output: data/bowtie2
+  # output: data/bbmap
+
 autometa:
   run: True
   databases: /rhome/ctsai085/bigdata/databases/autometa/databases
@@ -32,9 +38,13 @@ autometa:
   binning_target: ['bacteria']    # Available options ['bacteria', 'archaea']
   unclustered_recruitment: False   # Experimental features
 
-align_MAGs:
-  run: True
-  tools: 'bowtie2'       # Available choices ['bbmap', 'bowtie2']
-  output: data/bowtie2
-  # output: data/bbmap
+metabat:
+  run: False
+  output: data/metabat
+
+gtdbtk:
+  run: False
+  output: data/gtdbtk
+
+
 
