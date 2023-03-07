@@ -147,7 +147,7 @@ rule diamond_blastp:
     threads: 20
     resources:
         time="7-00:00:00",
-        mem_mb=20000
+        mem_mb=40000
     conda:
         "envs/autometa.yaml"
     shell:
