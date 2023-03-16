@@ -39,12 +39,11 @@ autometa:
   unclustered_recruitment: False   # Experimental features
 
 metabat:
-  run: False
+  run: True
   output: data/metabat
 
 gtdbtk:
-  run: False
+  run: True
   output: data/gtdbtk
-
-
-
+  db: /srv/projects/db/gtdbtk/207_v2
+  mash_db: /rhome/ctsai085/bigdata/databases/gtdbtk

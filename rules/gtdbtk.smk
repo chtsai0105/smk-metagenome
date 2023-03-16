@@ -1,48 +1,20 @@
-rule gtdbtk_identify:
-    input:
-        "{dir}/{{sample}}/bin".format(dir=METABAT_OUTPUT)
-    output:
-        directory("{dir}/{{sample}}/identify".format(dir=GTDBTK_OUTPUT))
-    threads: 2
-    resources:
-        time="3-00:00:00",
-        mem_mb=20000
-    conda:
-        "envs/gtdbtk.yaml"
-    shell:
-        """
-        gtdbtk identify --genome_dir {input} --out_dir {output} --extension fasta --cpus {threads}
-        """
+GTDBTK_DB = config['gtdbtk']['db']
+MASH_DB = config['gtdbtk']['mash_db']
 
-rule gtdbtk_align:
+rule gtdbtk_classify_wf:
     input:
-        rules.gtdbtk_identify.output
+        "{dir}/{{sample}}".format(dir=METABAT_OUTPUT),
     output:
-        directory("{dir}/{{sample}}/align".format(dir=GTDBTK_OUTPUT))
+        directory("{dir}/{{sample}}".format(dir=GTDBTK_OUTPUT))
     threads: 2
-    resources:
-        time="3-00:00:00",
-        mem_mb=20000
-    conda:
-        "envs/gtdbtk.yaml"
-    shell:
-        """
-        gtdbtk align --identify_dir {input} --out_dir {output} --cpus {threads}
-        """
-
-rule gtdbtk_classify:
-    input:
-        fasta = "{dir}/{{sample}}/bin".format(dir=METABAT_OUTPUT),
-        align = rules.gtdbtk_align.output
-    output:
-        directory("{dir}/{{sample}}/classify".format(dir=GTDBTK_OUTPUT))
-    threads: 2
+    params:
+        mash = MASH_DB
     resources:
         time="7-00:00:00",
-        mem_mb=100000
+        mem_mb=80000
     conda:
         "envs/gtdbtk.yaml"
     shell:
         """
-        gtdbtk classify --genome_dir {input.fasta} --align_dir {input.align} --out_dir {output} -x fasta --cpus {threads}
+        gtdbtk classify_wf --genome_dir {input} --out_dir {output} -x fa --cpus {threads} --keep_intermediates --mash_db {params.mash}
         """

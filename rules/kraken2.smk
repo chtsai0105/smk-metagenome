@@ -33,7 +33,8 @@ rule kraken2_profiling:
         db_dir = rules.kraken2_database.output,
         k2d = "{dir}/{db}/hash.k2d".format(dir=DB_PARENT_DIR, db=DB)
     output:
-        "{dir}/{{sample}}_kraken2.tsv".format(dir=KRAKEN2_OUTPUT)
+        tsv = "{dir}/{{sample}}_kraken2.tsv".format(dir=KRAKEN2_OUTPUT),
+        report = "{dir}/{{sample}}_report.txt".format(dir=KRAKEN2_OUTPUT)
     threads: 8
     params:
         db_parent_dir = DB_PARENT_DIR,
@@ -47,7 +48,7 @@ rule kraken2_profiling:
         """
         KRAKEN2_DB_PATH={params.db_parent_dir}
         kraken2 --db {params.db_parent_dir}/{params.db} --threads {threads} --paired \
-        --gzip-compressed --confidence 0.1 {input.R1} {input.R2} --output {output}
+        --gzip-compressed --confidence 0.1 {input.R1} {input.R2} --output {output} --report 
         """
 
 rule taxonkit_reformat:

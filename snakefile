@@ -120,9 +120,6 @@ if config['align_to_assembly']['run']:
     else:
         input_list.extend(["{dir}/{sample}.stats".format(dir=MAPPING_OUTPUT, sample=sample) for sample in data.samples()])
 
-# if config['postassembled_alignment']['run_alignment']:
-#     input_list.extend(["{dir}/{sample}_covstats.tsv".format(dir=MAPPING_OUTPUT, sample=sample) for sample in data.samples()])
-
 ### euk_detection.smk
 # if config['run_euk_detection']:
 #     include: "rules/euk_detection.smk"
@@ -135,20 +132,28 @@ if config['autometa']['run']:
     include: "rules/autometa.smk"
 
     input_list.extend(["{dir}/{sample}/intermediates/coverage.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in data.samples()])  # cov_tab
-    # input_list.extend(["{dir}/{sample}/intermediates/blastp.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in data.samples()])    # blastp
-    # input_list.extend(["{dir}/{sample}/intermediates/taxonomy/taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in data.samples()])   # taxonomy
+    input_list.extend(["{dir}/{sample}/intermediates/blastp.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in data.samples()])    # blastp
+    input_list.extend(["{dir}/{sample}/intermediates/taxonomy/taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample) for sample in data.samples()])   # taxonomy
     
-    # for kingdom in config['autometa']['binning_target']:
-    #     # input_list.extend(["{dir}/{sample}/intermediates/{kingdom}.markers.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()])  # autometa_markers
-    #     # input_list.extend(["{dir}/{sample}/{kingdom}_binning.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()])  # binning_output
-    #     # input_list.extend(["{dir}/{sample}/{kingdom}_main.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # main_output
-    #     if config['autometa']['unclustered_recruitment']:
-    #         input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_binning.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()])    # metabin_stats
-    #         input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_features.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # metabin_taxonomy
-    #         input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_main.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # metabin
-    #     input_list.extend(["{dir}/{sample}/{kingdom}_metabin_stats.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()])    # metabin_stats
-    #     input_list.extend(["{dir}/{sample}/{kingdom}_metabin_taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # metabin_taxonomy
-    #     input_list.extend(["{dir}/{sample}/{kingdom}_metabins".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # metabin
+    for kingdom in config['autometa']['binning_target']:
+        # input_list.extend(["{dir}/{sample}/intermediates/{kingdom}.markers.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()])  # autometa_markers
+        # input_list.extend(["{dir}/{sample}/{kingdom}_binning.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()])  # binning_output
+        # input_list.extend(["{dir}/{sample}/{kingdom}_main.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # main_output
+        if config['autometa']['unclustered_recruitment']:
+            input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_binning.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()])    # metabin_stats
+            input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_features.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # metabin_taxonomy
+            input_list.extend(["{dir}/{sample}/{kingdom}_recruitment_main.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # metabin
+        input_list.extend(["{dir}/{sample}/{kingdom}_metabin_stats.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()])    # metabin_stats
+        input_list.extend(["{dir}/{sample}/{kingdom}_metabin_taxonomy.tsv".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # metabin_taxonomy
+        input_list.extend(["{dir}/{sample}/{kingdom}_metabins".format(dir=AUTOMETA_OUTPUT, sample=sample, kingdom=kingdom) for sample in data.samples()]) # metabin
+
+if config['metabat']['run']:
+    include: "rules/metabat.smk"
+    input_list.extend(["{dir}/{sample}/bin".format(dir=METABAT_OUTPUT, sample=sample) for sample in data.samples()])
+
+if config['gtdbtk']['run']:
+    include: "rules/gtdbtk.smk"
+    input_list.extend(["{dir}/{sample}".format(dir=GTDBTK_OUTPUT, sample=sample) for sample in data.samples()])
 
 
 ############### Rules ######################
