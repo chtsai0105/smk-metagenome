@@ -47,3 +47,8 @@ gtdbtk:
   output: data/gtdbtk
   db: /srv/projects/db/gtdbtk/207_v2
   mash_db: /rhome/ctsai085/bigdata/databases/gtdbtk
+
+dbcan_cazy:
+  run: True
+  output: data/dbcan
+  db: /srv/projects/db/CAZY/CAZyDB/v11.0
