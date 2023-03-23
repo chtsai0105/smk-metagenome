@@ -16,7 +16,8 @@ rule metabat_binning:
         fasta = "{dir}/{{sample}}_filtered.fasta".format(dir=FILTERED_CONTIGS),
         cov = rules.metabat_contig_depths.output
     output:
-        "{dir}/{{sample}}/bin".format(dir=METABAT_OUTPUT)
+        dirname = directory("{dir}/{{sample}}".format(dir=METABAT_OUTPUT)),
+        bins = "{dir}/{{sample}}/bin".format(dir=METABAT_OUTPUT)
     threads: 4
     resources:
         time="3-00:00:00",
@@ -25,5 +26,5 @@ rule metabat_binning:
         "envs/metabat.yaml"
     shell:
         """
-        metabat2 --saveCls --numThreads {threads} -i {input.fasta} -a {input.cov} -o {output}
+        metabat2 --saveCls --numThreads {threads} -i {input.fasta} -a {input.cov} -o {output.bins}
         """
