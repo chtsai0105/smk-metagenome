@@ -77,7 +77,7 @@ MAPPING_OUTPUT = config['align_to_assembly']['output']
 AUTOMETA_OUTPUT = config['autometa']['output']
 METABAT_OUTPUT = config['metabat']['output']
 GTDBTK_OUTPUT = config['gtdbtk']['output']
-DBCAN_OUTPUT = config['dbcan_cazy']['output']
+FUNC_ANNO_OUTPUT = config['functional_annotation']['output']
 ############### Input settings #############
 input_list = list()
 
@@ -156,9 +156,12 @@ if config['gtdbtk']['run']:
     include: "rules/gtdbtk.smk"
     input_list.extend(["{dir}/{sample}".format(dir=GTDBTK_OUTPUT, sample=sample) for sample in data.samples()])
 
-if config['dbcan_cazy']['run']:
-    include: "rules/dbcan_cazy.smk"
-    input_list.extend(["{dir}/{sample}".format(dir=DBCAN_OUTPUT, sample=sample) for sample in data.samples()])
+if config['functional_annotation']['run']:
+    include: "rules/functional_annotation.smk"
+    if "dbcan" in config['functional_annotation']['tools']:
+        input_list.extend(["{dir}/dbcan/{sample}/overview.txt".format(dir=FUNC_ANNO_OUTPUT, sample=sample) for sample in data.samples()])
+    if "kofamscan" in config['functional_annotation']['tools']:
+        input_list.extend(["{dir}/kofamscan/{sample}.txt".format(dir=FUNC_ANNO_OUTPUT, sample=sample) for sample in data.samples()])
 
 
 ############### Rules ######################
