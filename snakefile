@@ -232,7 +232,7 @@ rule trimmomatic:
         """
         trimmomatic PE -threads {threads} {input.R1} {input.R2} \
         {output.R1_paired} {output.R1_unpaired} {output.R2_paired} {output.R2_unpaired} \
-        ILLUMINACLIP:TruSeq3-SE:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15
+        ILLUMINACLIP:TruSeq3-SE:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:75
         """
 
 use rule fastqc_pre as fastqc_post with:
