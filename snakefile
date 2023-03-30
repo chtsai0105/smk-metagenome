@@ -158,10 +158,13 @@ if config['gtdbtk']['run']:
 
 if config['functional_annotation']['run']:
     include: "rules/functional_annotation.smk"
+    if config['functional_annotation']['clustering']:
+        input_list.extend(["{dir}/intermediate/{sample}_alignment_readcounts.csv".format(dir=FUNC_ANNO_OUTPUT, sample=sample) for sample in data.samples()])
     if "dbcan" in config['functional_annotation']['tools']:
         input_list.extend(["{dir}/dbcan/{sample}/overview.txt".format(dir=FUNC_ANNO_OUTPUT, sample=sample) for sample in data.samples()])
     if "kofamscan" in config['functional_annotation']['tools']:
         input_list.extend(["{dir}/kofamscan/{sample}.txt".format(dir=FUNC_ANNO_OUTPUT, sample=sample) for sample in data.samples()])
+    
 
 
 ############### Rules ######################

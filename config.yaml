@@ -50,6 +50,7 @@ gtdbtk:
 
 functional_annotation:
   run: True
+  clustering: True
   tools: ['dbcan', 'kofamscan']  # Available options ['dbcan', kofamscan']
   output: data/functional_annotation
   dbcan:

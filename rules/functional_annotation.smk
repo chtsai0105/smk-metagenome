@@ -38,7 +38,8 @@ rule cdhit:
     input:
         "{dir}/gene_calling/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
     output:
-        "{dir}/cdhit/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
+        faa = "{dir}/cdhit/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT),
+        clstr = "{dir}/cdhit/{{sample}}.faa.clstr".format(dir=FUNC_ANNO_OUTPUT)
     threads: 4
     resources:
         time="3-00:00:00",
@@ -50,9 +51,41 @@ rule cdhit:
         cd-hit -i {input} -o {output} -c 0.95 -M {resources.mem_mb} -T {threads}
         """
 
+rule generate_prediction_bedfile:
+    input:
+        "{dir}/gene_calling/{{sample}}.fna".format(dir=FUNC_ANNO_OUTPUT)
+    output:
+        "{dir}/intermediate/{{sample}}.bed".format(dir=FUNC_ANNO_OUTPUT)
+    shell:
+        """
+        awk '$0 ~ /^>/ {{OFS="\t"; sub(/^>/, "", $1); a=$1; sub(/_[0-9]+$/, "", a); print a, $3, $5, $1}}' {input} > {output}
+        """
+
+rule bedtools_multicov:
+    input:
+        bam = "{dir}/{{sample}}.bam".format(dir=MAPPING_OUTPUT),
+        bed = rules.generate_prediction_bedfile.output
+    output:
+        "{dir}/intermediate/{{sample}}_covbed.tsv".format(dir=FUNC_ANNO_OUTPUT)
+    conda:
+        "envs/functional_annotation.yaml"
+    shell:
+        """
+        multiBamCov -bams {input.bam} -bed {input.bed} > {output}
+        """
+
+rule get_alignment_read_counts:
+    input:
+        clstr = rules.cdhit.output.clstr,
+        covbed = rules.bedtools_multicov.output
+    output:
+        "{dir}/intermediate/{{sample}}_alignment_readcounts.csv".format(dir=FUNC_ANNO_OUTPUT)
+    script:
+        "scripts/contig_alignment_read_counts.py"
+
 rule run_dbcan:
     input:
-        "{dir}/cdhit/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
+        rules.cdhit.output.faa if config['functional_annotation']['clustering'] else "{dir}/gene_calling/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
     output:
         dirname = directory("{dir}/dbcan/{{sample}}".format(dir=FUNC_ANNO_OUTPUT)),
         hmmer = "{dir}/dbcan/{{sample}}/hmmer.out".format(dir=FUNC_ANNO_OUTPUT),
@@ -74,7 +107,7 @@ rule run_dbcan:
 
 rule kofamscan:
     input:
-        "{dir}/cdhit/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
+        rules.cdhit.output.faa if config['functional_annotation']['clustering'] else "{dir}/gene_calling/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
     output:
         tmp_dir = temp(directory("{dir}/kofamscan/tmp_{{sample}}".format(dir=FUNC_ANNO_OUTPUT))),
         result = "{dir}/kofamscan/{{sample}}.txt".format(dir=FUNC_ANNO_OUTPUT)
