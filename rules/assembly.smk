@@ -43,6 +43,7 @@ rule megahit:
         "envs/assembler.yaml"
     shell:
         """
+        rm {params.dirname} -rf
         megahit -1 {input.R1} -2 {input.R2} -o {params.dirname} -t {threads}
         """
 
