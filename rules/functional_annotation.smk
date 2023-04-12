@@ -10,7 +10,7 @@ rule prodigal:
         nucls = "{dir}/gene_calling/{{sample}}.fna".format(dir=FUNC_ANNO_OUTPUT),
         prots = "{dir}/gene_calling/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
     params:
-        "-p meta -e 1"
+        "-p meta -m"
     resources:
         time="7-00:00:00",
         mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (0.5 + attempt * 0.5), 8000), 250000)
