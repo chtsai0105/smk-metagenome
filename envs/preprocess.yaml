@@ -4,4 +4,4 @@ channels:
 dependencies:
   - fastqc
   - bbmap>=38.93
-  - trimmomatic>=0.36
+  - fastp>=0.23.2

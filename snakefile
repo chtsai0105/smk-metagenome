@@ -222,29 +222,25 @@ rule fastqc_pre:
         fastqc -t {threads} -o {params.dirname} {input}
         """
 
-rule trimmomatic:
+rule fastp:
     input:
         R1 = lambda w: data.unified_samples(w.sample, FASTQ, read='R1', column='renamed_fastq'),
         R2 = lambda w: data.unified_samples(w.sample, FASTQ, read='R2', column='renamed_fastq')
     output:
-        R1_paired = "{dir}/{{sample}}_R1.fastq.gz".format(dir=FASTQ_TRIMMED),
-        R1_unpaired = "{dir}/{{sample}}_R1_unpaired.fastq.gz".format(dir=FASTQ_TRIMMED),
-        R2_paired = "{dir}/{{sample}}_R2.fastq.gz".format(dir=FASTQ_TRIMMED),
-        R2_unpaired = "{dir}/{{sample}}_R2_unpaired.fastq.gz".format(dir=FASTQ_TRIMMED)
+        R1 = "{dir}/{{sample}}_R1.fastq.gz".format(dir=FASTQ_TRIMMED),
+        R2 = "{dir}/{{sample}}_R2.fastq.gz".format(dir=FASTQ_TRIMMED)
     threads: 4
     conda:
         "envs/preprocess.yaml"
     shell:
         """
-        trimmomatic PE -threads {threads} {input.R1} {input.R2} \
-        {output.R1_paired} {output.R1_unpaired} {output.R2_paired} {output.R2_unpaired} \
-        ILLUMINACLIP:TruSeq3-SE:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:75
+        fastp -i {input.R1} -I {input.R2} -o {output.R1} -O {output.R2} --length_required 75 -w {threads}
         """
 
 use rule fastqc_pre as fastqc_post with:
     input:
-        lambda w: rules.trimmomatic.output.R1_paired if w.R == 'R1'
-            else rules.trimmomatic.output.R2_paired
+        lambda w: rules.fastp.output.R1 if w.R == 'R1'
+            else rules.fastp.output.R2
     output:
         expand("{dir}/post_trim/{{sample}}_{{R}}_fastqc.{ext}", dir=FASTQC_OUTPUT, ext=["html", "zip"])
     params:
