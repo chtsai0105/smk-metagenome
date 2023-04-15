@@ -7,16 +7,17 @@ else:
 
 rule spades:
     input:
-        reads = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, ext='.fastq.gz') if config['trimming']['run']
-            else data.unified_samples(w.sample, FASTQ, column='renamed_fastq')
+        reads = expand("{dir}/preprocess_done/{{sample}}_{R}.fastq.gz", dir=FASTQ, R=["R1", "R2"])
     output:
         contigs = "{dir}/{{sample}}/contigs.fasta".format(dir=ASSEMBLY_OUTPUT),
         scaffolds = "{dir}/{{sample}}/scaffolds.fasta".format(dir=ASSEMBLY_OUTPUT)
     log:
-        "logs/spades_{sample}.log",
+        "logs/spades_{sample}.log"
+    params:
+        extra="--only-assembler"
     threads: 12
     resources:
-        time="14-00:00:00",
+        time="30-00:00:00",
         mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (2 + attempt), 100000), 600000)
         # Set the mem as input_size(mb) * 10 * (3 for first try, 4 for second try and 5 for third try) or at least 100G
         # and the maximun usage would not excess 600000 (600G)
@@ -27,14 +28,12 @@ rule spades:
 
 rule megahit:
     input:
-        R1 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R1', ext='.fastq.gz') if config['trimming']['run']
-            else data.unified_samples(w.sample, FASTQ, read='R1', column='renamed_fastq'),
-        R2 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R2', ext='.fastq.gz') if config['trimming']['run']
-            else data.unified_samples(w.sample, FASTQ, read='R2', column='renamed_fastq')
+        R1 = "{dir}/preprocess_done/{{sample}}_R1.fastq.gz".format(dir=FASTQ),
+        R2 = "{dir}/preprocess_done/{{sample}}_R2.fastq.gz".format(dir=FASTQ)
     output:
         "{dir}/{{sample}}/final.contigs.fa".format(dir=ASSEMBLY_OUTPUT)
     params:
-        dirname = directory("{dir}/{{sample}}".format(dir=ASSEMBLY_OUTPUT))
+        dir = lambda w, output: os.path.dirname(output[0])
     threads: 12
     resources:
         time="14-00:00:00",
@@ -43,8 +42,8 @@ rule megahit:
         "envs/assembler.yaml"
     shell:
         """
-        rm {params.dirname} -rf
-        megahit -1 {input.R1} -2 {input.R2} -o {params.dirname} -t {threads}
+        rm {params.dir} -rf
+        megahit -1 {input.R1} -2 {input.R2} -o {params.dir} -t {threads}
         """
 
 rule contig_link:

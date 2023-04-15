@@ -53,10 +53,8 @@ rule bowtie2_index:
 
 rule bowtie2_mapping:
     input:
-        R1 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R1', ext='.fastq.gz') if config['trimming']['run']
-            else data.unified_samples(w.sample, FASTQ, read='R1', column='renamed_fastq'),
-        R2 = lambda w: data.unified_samples(w.sample, FASTQ_TRIMMED, read='R2', ext='.fastq.gz') if config['trimming']['run']
-            else data.unified_samples(w.sample, FASTQ, read='R2', column='renamed_fastq'),
+        R1 = "{dir}/preprocess_done/{{sample}}_R1.fastq.gz".format(dir=FASTQ),
+        R2 = "{dir}/preprocess_done/{{sample}}_R2.fastq.gz".format(dir=FASTQ),
         idx = expand("{dir}/{{sample}}.{ext}.bt2", dir=MAPPING_OUTPUT, ext=["1", "2", "3", "4", "rev.1", "rev.2"])
     output:
         bam = "{dir}/{{sample}}.bam".format(dir=MAPPING_OUTPUT),

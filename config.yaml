@@ -7,9 +7,8 @@ fastqc:
   run: True
   output: data/fastqc
 
-trimming:   # Experimental feature
+trimming:
   run: True
-  output: data/fastq_trimmed
 
 kraken2:
   run: True

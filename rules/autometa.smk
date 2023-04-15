@@ -43,7 +43,7 @@ rule diamond:
     output:
         "{dir}/ncbi/nr.dmnd".format(dir=DATABASES_DIR)                  # Very time consuming
     params:
-        output = "{}/nr".format(rules.update_ncbi_database.params.dbdir)
+        output = lambda w, output: os.path.splitext(output[0])[0]
     threads: 20
     resources:
         time="7-00:00:00",
