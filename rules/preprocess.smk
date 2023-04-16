@@ -24,7 +24,7 @@ rule fastqc_pre:
         zip = "{dir}/pre_trim/{{sample}}_fastqc.zip".format(dir=FASTQC_OUTPUT)
     params:
         dir = lambda w, output: os.path.dirname(output[0]),
-        basename = lambda w, output: data.filepath_generator(w.sample, column="base")
+        basename = lambda w, input: os.path.basename(input[0]).rstrip(data.filepath_generator(w.sample, column="ext")[0])
     threads: 4
     conda:
         "envs/preprocess.yaml"
@@ -41,7 +41,9 @@ rule fastp:
     input:
         lambda w: data.filepath_generator(w.sample, FASTQ)
     output:
-        "{dir}/trimmed/{{sample}}.fastq.gz".format(dir=FASTQ)
+        fastq = "{dir}/trimmed/{{sample}}.fastq.gz".format(dir=FASTQ),
+        html = "{dir}/trimmed/{{sample}}.html".format(dir=FASTQ),
+        json = "{dir}/trimmed/{{sample}}.json".format(dir=FASTQ),
     threads: 4
     resources:
         mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 4 * (2 + attempt), 4000), 16000)
@@ -49,19 +51,20 @@ rule fastp:
         "envs/preprocess.yaml"
     shell:
         """
-        fastp -i {input} -w {threads} --interleaved_in --stdout --length_required 75 | gzip -1 > {output}
+        fastp -i {input} -w {threads} --interleaved_in --html {output.html} --json {output.json} \
+        --stdout --length_required 75 | gzip -1 > {output.fastq}
         """
 
 use rule fastqc_pre as fastqc_post with:
     input:
-        rules.fastp.output
+        rules.fastp.output.fastq
     output:
         html = "{dir}/post_trim/{{sample}}_fastqc.html".format(dir=FASTQC_OUTPUT),
         zip = "{dir}/post_trim/{{sample}}_fastqc.zip".format(dir=FASTQC_OUTPUT)
 
 rule error_correction:
     input:
-        rules.fastp.output if config['trimming']['run'] else lambda w: data.filepath_generator(w.sample, FASTQ)
+        rules.fastp.output.fastq if config['trimming']['run'] else lambda w: data.filepath_generator(w.sample, FASTQ)
     output:
         "{dir}/corrected/{{sample}}.fastq.gz".format(dir=FASTQ)
     threads: 8
