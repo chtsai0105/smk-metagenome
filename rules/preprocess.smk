@@ -24,7 +24,7 @@ rule fastqc_pre:
         zip = "{dir}/pre_trim/{{sample}}_fastqc.zip".format(dir=FASTQC_OUTPUT)
     params:
         dir = lambda w, output: os.path.dirname(output[0]),
-        basename = lambda w, input: os.path.basename(input[0]).rstrip(data.filepath_generator(w.sample, column="ext")[0])
+        basename = lambda w, input: os.path.basename(re.search("(^.*)(\.f(ast)?q($|\.gz$))", input[0]).group(1))
     threads: 4
     conda:
         "envs/preprocess.yaml"

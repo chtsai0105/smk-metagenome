@@ -8,7 +8,6 @@ class df_prebuild(object):
         df = df.copy()
         self.__check(df)
         df = self.__interleave_paired_samples(df)
-        df = self.__extract_basename(df)
         self.df = df
 
     def __check(self, df):
@@ -21,11 +20,6 @@ class df_prebuild(object):
     def __interleave_paired_samples(self, df):
         paired_idx = df.query('interleaved == ""').index
         df.loc[paired_idx, 'interleaved'] = df.loc[paired_idx, 'sample'] + '_interleaved.fastq.gz'
-        return df
-
-    def __extract_basename(self, df):
-        df['base'] = df['interleaved'].apply(lambda x: re.search("(^.*)(\.f(ast)?q($|\.gz$))", x).group(1))
-        df['ext'] = df['interleaved'].apply(lambda x: re.search("(^.*)(\.f(ast)?q($|\.gz$))", x).group(2))
         return df
 
     def samples(self):

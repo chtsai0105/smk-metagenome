@@ -1,3 +1,5 @@
+ruleorder: metabat_contig_depths > metabat_binning
+
 rule metabat_contig_depths:
     input:
         bam = "{dir}/{{sample}}.bam".format(dir=MAPPING_OUTPUT),
