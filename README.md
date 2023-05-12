@@ -7,9 +7,9 @@
 [issues-shield]: https://img.shields.io/github/issues/chtsai0105/smk-metagenome
 [issues-url]: https://github.com/chtsai0105/smk-metagenome/issues
 [license-shield]: https://img.shields.io/github/license/chtsai0105/smk-metagenome?label=license
-[license-url]: https://github.com/chtsai0105/smk-metagenome/blob/master/LICENSE.md
+[license-url]: https://github.com/chtsai0105/smk-metagenome/blob/master/LICENSE
 
-# Snakemake workflow for comparitive genomics
+# Snakemake workflow for shotgun metagenomic data processing
 <img align="right" width="120" height="120" src="https://avatars.githubusercontent.com/u/33450111?s=200&v=4">
 The main goal of this workflow is to perform taxonomic profiling and functional annotation for shotgun metagenome data.
 
@@ -97,18 +97,22 @@ cd smk-metagenome
 git submodule update --init
 ```
 
-Next, go to the directory by `cd smk-metagenome`. It should contains the following files:
+Next, go to the directory by `cd smk-metagenome`. The entire folder structure and its details are listed below:
 
-File    |Description
--|-
-[snakefile](snakefile)  |The workflow entry. Define the targets for the workflow.
-[config.yaml](config.yaml)  |Define the path for data and metadata.
-[sample.csv](sample.csv)    |The metadata for samples. Define the names of the samples and the fastq files.
-[run_snakemake.bash](run_snakemake.bash)    |The bash script for running the workflow.
-[data/](data)   |The folder for the data and the workflow outputs.
-[envs/](envs)   |The folder that contains the yaml config for conda environments.
-[rules/](rules) |The folder that contains the rules/submodules of the workflow.
-[slurm/](https://github.com/chtsai0105/snakemake_profile-slurm/tree/master) |The folder that contains the slurm profile for stajichlab partition@UCR hpcc.
+    .
+    ├── config/
+    │   ├── config.yaml             # Define the path for data and metadata.
+    │   ├── sample.csv              # The metadata for samples. Define the names of the samples and the fastq files.
+    ├── workflow/
+    │   ├── rules/                  # The folder that contains the rules/submodules of the workflow.
+    │   ├── envs/                   # The folder that contains the yaml config for conda environments.
+    │   ├── wrappers/               # The folder that stores the self-defined wrappers.
+    │   ├── snakefile               # The workflow entrypoint. Define the targets for the workflow.
+    ├── data/                       # The folder for the data and the workflow outputs.
+    │   ├── fastq/                  # The folder where the initial fastq files should be placed.
+    ├── logs/                       # The folder that stores all the logs.
+    ├── slurm/                      # The folder that contains the slurm profile for stajichlab partition@UCR hpcc.
+    └── run_snakemake.bash          # The bash script for running the workflow.
 
 <br>
 
@@ -116,7 +120,7 @@ File    |Description
 
 You can edit the `config.yaml` to setup the behavior of the workflow.
 
-The key **metadata** refers to the `sample.csv`, which have all the details of the sample.
+The key [**metadata**](config/config.yaml#LL1C4-L1C4) refers to the `sample.csv`, which have all the details of the sample.
 The other keys represent major steps in the workflow. You can switch on/off a particular step by changing the subkey `run` to True/False. You can also change the 
 output path in some of the steps.
 
@@ -141,7 +145,7 @@ Please also confirm that the names in each column are unique.
 
 ## Run the workflow
 
-After compiling the template and setup the paramters, the next step is to run the workflow.
+After setup the paramters, the next step is to run the workflow.
 
 Snakemake provides a dry-run feature to examine the workflow before truly running it. You should always test the workflow beforehand to make sure it execute as 
 expected by the following command:
@@ -156,4 +160,10 @@ After confirming all the steps. You can run the workflow by executing the script
 snakemake -p --profile slurm --use-envmodules --use-conda --jobs 8 --max-threads 20
 ```
 
-Currently I constrain the cpu usage of all parallel jobs to 20, you may change it as you like.
+This will allow 8 jobs to run parallelly and constrain the maximum cpu usage of each job to 20, you may change it as you like.
+
+If not running on the cluster, please remove the `--profile` option:
+
+```
+snakemake -p --use-envmodules --use-conda --jobs 8 --max-threads 20
+```

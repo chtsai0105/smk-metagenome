@@ -30,7 +30,7 @@ class df_prebuild(object):
 
     
 ############### Configuration ##############
-configfile: "config.yaml"
+configfile: "config/config.yaml"
 data = pd.read_csv(config['Metadata'], keep_default_na=False, na_values=['_'], comment="#")
 data = df_prebuild(data)
 

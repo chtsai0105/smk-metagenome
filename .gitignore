@@ -1,16 +1,9 @@
-*
 .*
+*.ipynb
+test_scripts
+data/*
+logs/*
 
+!.gitkeep
 !.gitignore
-!README.md
-!LICENSE.md
-!snakefile
-
-!data/.gitkeep
-!envs
-!envs/*
-!rules
-!rules/*
-!wrappers
-!wrappers/*
-!wrappers/**/wrapper.py
+!.gitmodules

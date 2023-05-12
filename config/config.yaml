@@ -1,4 +1,4 @@
-Metadata: sample.csv
+Metadata: config/sample.csv
 
 raw_data:
   fastq: data/fastq
@@ -49,7 +49,7 @@ gtdbtk:
 
 functional_annotation:
   run: True
-  clustering: True
+  clustering: False
   tools: ['dbcan', 'kofamscan']  # Available options ['dbcan', kofamscan']
   output: data/functional_annotation
   dbcan:
