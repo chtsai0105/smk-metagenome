@@ -17,6 +17,7 @@ rule spades:
         extra="--only-assembler"
     threads: 12
     resources:
+        partition=config['partition']['highmem'],
         time="30-00:00:00",
         mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (2 + attempt), 100000), 600000)
         # Set the mem as input_size(mb) * 10 * (3 for first try, 4 for second try and 5 for third try) or at least 100G

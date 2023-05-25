@@ -1,5 +1,9 @@
 Metadata: config/sample.csv
 
+# Use the highmem partion when slurm profile is specified
+partition:
+  highmem: highmem
+
 raw_data:
   fastq: data/fastq
 

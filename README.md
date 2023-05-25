@@ -120,7 +120,11 @@ Next, go to the directory by `cd smk-metagenome`. The entire folder structure an
 
 You can edit the `config.yaml` to setup the behavior of the workflow.
 
-The key [**metadata**](config/config.yaml#LL1C4-L1C4) refers to the `sample.csv`, which have all the details of the sample.
+The key **metadata** refers to the `sample.csv`, which have all the details of the sample.
+
+The key **partition** is used to define the partition parameters. By defining it here we can avoid hardcoded the partion name directly in the script. Right now 
+we have a highmem partition for the assembly process.
+
 The other keys represent major steps in the workflow. You can switch on/off a particular step by changing the subkey `run` to True/False. You can also change the 
 output path in some of the steps.
 
@@ -157,13 +161,14 @@ snakemake -np
 After confirming all the steps. You can run the workflow by executing the script `run_snakemake.bash` or the following command:
 
 ```
-snakemake -p --profile slurm --use-envmodules --use-conda --jobs 8 --max-threads 20
+snakemake -p --profile slurm
 ```
 
-This will allow 8 jobs to run parallelly and constrain the maximum cpu usage of each job to 20, you may change it as you like.
+Note that there are additional parameter defined in the slurm profile, please refer to [smk_profile-slurm](https://github.com/chtsai0105/snakemake_profile-slurm.git) 
+for more details.
 
-If not running on the cluster, please remove the `--profile` option:
+If not running on the cluster, please remove the `--profile` option and add additional parameters as you need:
 
 ```
-snakemake -p --use-envmodules --use-conda --jobs 8 --max-threads 20
+snakemake -p --use-conda --jobs 4 --max-threads 4
 ```
