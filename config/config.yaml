@@ -20,6 +20,11 @@ kraken2:
   db: RefSeq_fungi_bac
   output: data/kraken2
 
+mmseqs2:
+  run: True
+  db: /srv/projects/db/ncbi/mmseqs/uniref90
+  output: data/mmseqs2
+
 assembly:
   run: True
   assembler: spades    # Available choices ['spades', 'megahit']

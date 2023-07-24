@@ -37,6 +37,7 @@ data = df_prebuild(data)
 FASTQ = config['raw_data']['fastq']
 FASTQC_OUTPUT = config['fastqc']['output']
 KRAKEN2_OUTPUT = config['kraken2']['output']
+MMSEQS2_OUTPUT = config['mmseqs2']['output']
 ASSEMBLY_OUTPUT = config['assembly']['output']
 FILTERED_CONTIGS = config['assembly']['filtered_contigs']
 MAPPING_OUTPUT = config['align_to_assembly']['output']
@@ -69,6 +70,11 @@ if config['trimming']['run']:
 if config['kraken2']['run']:
     include: "rules/kraken2.smk"
     input_list.extend(["{dir}/{sample}_taxon.csv".format(dir=KRAKEN2_OUTPUT, sample=sample) for sample in data.samples()])
+
+### mmseqs2
+if config['mmseqs2']['run']:
+    include: "rules/mmseqs2.smk"
+    input_list.extend(["{dir}/{sample}".format(dir=MMSEQS2_OUTPUT, sample=sample) for sample in data.samples()])
 
 ### Assembly
 if config['assembly']['run']:
