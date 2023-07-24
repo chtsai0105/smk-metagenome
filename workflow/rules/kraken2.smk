@@ -46,7 +46,7 @@ rule kraken2_profiling:
         """
         KRAKEN2_DB_PATH={params.db_parent_dir}
         kraken2 --db {input.db_dir} --threads {threads} --paired \
-        --gzip-compressed --confidence 0.1 {input.R1} {input.R2} --output {output} --report 
+        --gzip-compressed --confidence 0.1 {input.R1} {input.R2} --output {output.tsv} --report {output.report}
         """
 
 rule taxonkit_reformat:
