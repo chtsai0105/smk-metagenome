@@ -59,7 +59,7 @@ gtdbtk:
 functional_annotation:
   run: True
   clustering: False
-  tools: ['dbcan', 'kofamscan']  # Available options ['dbcan', kofamscan']
+  tools: ['cazyme', 'substrate', 'kofamscan']  # Available options ['cazyme', 'substrate', kofamscan']
   output: data/functional_annotation
   dbcan:
     db: /srv/projects/db/CAZY/CAZyDB/v11.0

@@ -83,34 +83,47 @@ rule get_alignment_read_counts:
     script:
         "scripts/contig_alignment_read_counts.py"
 
-rule run_dbcan:
+rule dbcanLight_cazyme:
     input:
         rules.cdhit.output.faa if config['functional_annotation']['clustering'] else "{dir}/gene_calling/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
     output:
-        dirname = directory("{dir}/dbcan/{{sample}}".format(dir=FUNC_ANNO_OUTPUT)),
-        hmmer = "{dir}/dbcan/{{sample}}/hmmer.out".format(dir=FUNC_ANNO_OUTPUT),
-        overview = "{dir}/dbcan/{{sample}}/overview.txt".format(dir=FUNC_ANNO_OUTPUT)
+        "{dir}/dbcan/{{sample}}/cazymes.tsv".format(dir=FUNC_ANNO_OUTPUT)
     params:
-        db = config['functional_annotation']['dbcan']['db']
+        dir = lambda w, output: os.path.dirname(output[0])
     threads: 8
     resources:
-        time="7-00:00:00",
-        mem_mb=80000
+        time="1-00:00:00",
+        mem_mb=10000
     conda:
         "envs/functional_annotation.yaml"
     shell:
         """
-        run_dbcan --db_dir {params.db} --out_dir {output.dirname} --tools hmmer \
-        --hmm_cpu {threads} --dia_cpu {threads} --dbcan_thread {threads} --tf_cpu {threads} --stp_cpu {threads} \
-        {input} protein
+        dbcanLight -i {input} -o {params.dir} -m cazyme -t {threads}
+        """
+
+rule dbcanLight_substrate:
+    input:
+        rules.cdhit.output.faa if config['functional_annotation']['clustering'] else "{dir}/gene_calling/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
+    output:
+        "{dir}/dbcan/{{sample}}/substrates.tsv".format(dir=FUNC_ANNO_OUTPUT)
+    params:
+        dir = lambda w, output: os.path.dirname(output[0])
+    threads: 8
+    resources:
+        time="1-00:00:00",
+        mem_mb=10000
+    conda:
+        "envs/functional_annotation.yaml"
+    shell:
+        """
+        dbcanLight -i {input} -o {params.dir} -m sub -t {threads}
         """
 
 rule kofamscan:
     input:
         rules.cdhit.output.faa if config['functional_annotation']['clustering'] else "{dir}/gene_calling/{{sample}}.faa".format(dir=FUNC_ANNO_OUTPUT)
     output:
-        tmp_dir = temp(directory("{dir}/kofamscan/tmp_{{sample}}".format(dir=FUNC_ANNO_OUTPUT))),
-        result = "{dir}/kofamscan/{{sample}}.txt".format(dir=FUNC_ANNO_OUTPUT)
+        "{dir}/kofamscan/{{sample}}.txt".format(dir=FUNC_ANNO_OUTPUT)
     params:
         profile = config['functional_annotation']['kofamscan']['profile'],
         ko_list = config['functional_annotation']['kofamscan']['ko_list']
@@ -122,5 +135,5 @@ rule kofamscan:
         "envs/functional_annotation.yaml"
     shell:
         """
-        exec_annotation -p {params.profile} -k {params.ko_list} --cpu {threads} --tmp-dir {output.tmp_dir} -o {output.result} {input}
+        exec_annotation -p {params.profile} -k {params.ko_list} --cpu {threads} --tmp-dir {resources.tmpdir} -o {output} -f detail-tsv {input}
         """

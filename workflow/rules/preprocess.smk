@@ -41,7 +41,7 @@ rule fastp:
     input:
         lambda w: data.filepath_generator(w.sample, FASTQ)
     output:
-        fastq = "{dir}/trimmed/{{sample}}.fastq.gz".format(dir=FASTQ),
+        fastq = temp("{dir}/trimmed/{{sample}}.fastq.gz".format(dir=FASTQ)),
         html = "{dir}/trimmed/{{sample}}.html".format(dir=FASTQ),
         json = "{dir}/trimmed/{{sample}}.json".format(dir=FASTQ),
     threads: 4
@@ -66,7 +66,7 @@ rule error_correction:
     input:
         rules.fastp.output.fastq if config['trimming']['run'] else lambda w: data.filepath_generator(w.sample, FASTQ)
     output:
-        "{dir}/corrected/{{sample}}.fastq.gz".format(dir=FASTQ)
+        temp("{dir}/corrected/{{sample}}.fastq.gz".format(dir=FASTQ))
     threads: 8
     resources:
         mem_mb=lambda w, input, attempt: min(max((input.size // 1000000) * 10 * (2 + attempt), 20000), 100000)
